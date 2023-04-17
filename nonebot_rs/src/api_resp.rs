@@ -1,4 +1,3 @@
-use crate::utils::id_deserializer;
 use serde::{Deserialize, Serialize};
 
 /// Onebot Api 响应根结构体
@@ -42,6 +41,22 @@ pub enum RespData {
     SendCheck(SendCheck),
     Status(crate::event::Status),
     VersionInfo(VersionInfo),
+    ModelVariants(ModelVariants),
+    BotOnlineClients(BotOnlineClients),
+    UnidirectionalFriendList(Vec<UnidirectionalFriendList>),
+    ForwardMsgId(ForwardMsgId),
+    GroupMsgHistory(GroupMsgHistory),
+    OcrImage(OcrImages),
+    GroupSystemMsg(GroupSystemMsg),
+    EssenceMsgList(Vec<EssenceMsgList>),
+    GroupAtAllRemain(GroupAtAllRemain),
+    GroupNotice(GroupNotice),
+    GroupFileSystemInfo(GroupFileSystemInfo),
+    GroupRootFiles(GroupRootFiles),
+    GroupFilesByFolder(GroupFilesByFolder),
+    GroupFileUrl(GroupFileUrl),
+    DownloadFile(DownloadFiles),
+    UrlSafely(UrlSafely)
 }
 
 /// message_id 响应数据
@@ -58,28 +73,26 @@ pub struct Message {
     pub message_id: i32,
     pub real_id: i32,
     pub sender: Sender,
-    pub message: Vec<crate::message::Message>,
+    pub message: crate::message::MessageChain,
 }
 
 /// get_forward_msg 响应数据
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Messages {
-    pub message: Vec<crate::message::Message>,
+    pub message: crate::message::MessageChain,
 }
 
 /// get_login_info 响应数据
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct LoginInfo {
-    #[serde(deserialize_with = "id_deserializer")]
-    pub user_id: String,
+    pub user_id: i64,
     pub nickname: String,
 }
 
 /// get_stranger_info 响应数据
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct StrangerInfo {
-    #[serde(deserialize_with = "id_deserializer")]
-    pub user_id: String,
+    pub user_id: i64,
     pub nickname: String,
     pub sex: String,
     pub age: i32,
@@ -88,8 +101,7 @@ pub struct StrangerInfo {
 /// get_group_info 响应数据
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GroupInfo {
-    #[serde(deserialize_with = "id_deserializer")]
-    pub groupp_id: String,
+    pub group_id: i64,
     pub group_name: String,
     pub member_count: i32,
     pub max_member_count: i32,
@@ -98,10 +110,8 @@ pub struct GroupInfo {
 /// get_group_member_info 响应数据
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GroupMemberInfo {
-    #[serde(deserialize_with = "id_deserializer")]
-    pub groupp_id: String,
-    #[serde(deserialize_with = "id_deserializer")]
-    pub user_id: String,
+    pub group_id: i64,
+    pub user_id: i64,
     pub nickname: String,
     pub card: String,
     pub sex: String,
@@ -120,8 +130,7 @@ pub struct GroupMemberInfo {
 /// get_group_honor_info 响应数据
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GroupHonorInfo {
-    #[serde(deserialize_with = "id_deserializer")]
-    pub group_id: String,
+    pub group_id: i64,
     pub current_talkative: Option<CurrentTalkative>,
     pub talkative_list: Option<Vec<HonorItem>>,
     pub performer_list: Option<Vec<HonorItem>>,
@@ -172,8 +181,7 @@ pub struct VersionInfo {
 /// get_friend_list 响应数组成员
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct FriendListItem {
-    #[serde(deserialize_with = "id_deserializer")]
-    pub user_id: String,
+    pub user_id: i64,
     pub nickname: String,
     pub remark: String,
 }
@@ -181,8 +189,7 @@ pub struct FriendListItem {
 /// get_group_list 响应数组成员
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GroupListItem {
-    #[serde(deserialize_with = "id_deserializer")]
-    pub group_id: String,
+    pub group_id: i64,
     pub group_name: String,
     pub member_count: i32,
     pub max_member_count: i32,
@@ -191,10 +198,8 @@ pub struct GroupListItem {
 /// get_group_member_list 响应数组成员
 #[derive(Debug, Serialize, Deserialize, Clone)] // need check
 pub struct GroupMember {
-    #[serde(deserialize_with = "id_deserializer")]
-    pub group_id: String,
-    #[serde(deserialize_with = "id_deserializer")]
-    pub user_id: String,
+    pub group_id: i64,
+    pub user_id: i64,
     pub nickname: String,
     pub card: String,
     pub sex: String,
@@ -210,8 +215,7 @@ pub struct GroupMember {
 /// get_group_honor_info 相关
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CurrentTalkative {
-    #[serde(deserialize_with = "id_deserializer")]
-    pub user_id: String,
+    pub user_id: i64,
     pub nickname: String,
     pub avatar: String,
     pub day_count: i32,
@@ -220,8 +224,7 @@ pub struct CurrentTalkative {
 /// get_group_honor_info 相关
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct HonorItem {
-    #[serde(deserialize_with = "id_deserializer")]
-    pub user_id: String,
+    pub user_id: i64,
     pub nickname: String,
     pub avatar: String,
     pub description: String,
@@ -233,3 +236,199 @@ pub enum Sender {
     Group(crate::event::GroupSender),
     Private(crate::event::PrivateSender),
 }
+
+/// _get_model_show 响应数据
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ModelVariants {
+    pub variants: Vec<Variant>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Variant {
+    pub model_show: String,
+    pub need_pay: bool,
+}
+
+/// get_online_clients 响应数据
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BotOnlineClients {
+    pub clients: BotClients,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BotClients {
+    pub app_id: i64,
+    pub device_name: String,
+    pub device_kind: String,
+}
+
+/// get_unidirectional_friend_list 响应数据
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UnidirectionalFriendList {
+    pub user_id: i64,
+    pub nickname: String,
+    pub source: String,
+}
+
+/// send_group_forward_msg/send_private_forward_msg 响应数据
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GroupMsgHistory {
+    pub messages: crate::message::MessageChain,
+}
+
+/// send_group_forward_msg/send_private_forward_msg 响应数据
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ForwardMsgId {
+    pub message_id: i32,
+    pub forward_id: String,
+}
+
+/// ocr_image 响应数据
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OcrImages {
+    pub texts: TextDetection,
+    pub language: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TextDetection {
+    pub text: String,
+    pub confidence: i32,
+    pub coordinates: Vec<serde_json::Value>,
+}
+
+/// get_group_system_msg 响应数据
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GroupSystemMsg {
+    pub invited_requests: Option<InvitedRequests>,
+    pub join_requests: Option<JoinRequests>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct InvitedRequests {
+    pub request_id: i64,
+    pub invitor_uin: i64,
+    pub invitor_nick: String,
+    pub group_id: i64,
+    pub group_name: String,
+    pub checked: bool,
+    pub actor: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct JoinRequests {
+    pub request_id: i64,
+    pub requester_uin: i64,
+    pub requester_nick: String,
+    pub message: String,
+    pub group_id: i64,
+    pub group_name: String,
+    pub checked: bool,
+    pub actor: i64,
+}
+
+/// get_essence_msg_list 响应数据
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct EssenceMsgList {
+    pub sender_id: i64,
+    pub sender_nick: String,
+    pub sender_time: i64,
+    pub operator_id: i64,
+    pub operator_nick: String,
+    pub operator_time: i64,
+    pub message_id: i32,
+}
+
+/// get_group_at_all_remain 响应数据
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GroupAtAllRemain {
+    pub can_at_all: bool,
+    pub remain_at_all_count_for_group: i16,
+    pub remain_at_all_count_for_uin: i16,
+}
+
+/// _get_group_notice 响应数据
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GroupNotice {
+    pub sender_id: i64,
+    pub publish_time: i64,
+    pub message: GroupNoticeMessage,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GroupNoticeMessage {
+    pub text: String,
+    pub images: Vec<GroupNoticeImage>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GroupNoticeImage {
+    pub height: String,
+    pub width: String,
+    pub id: String,
+}
+
+// get_group_file_system_info 响应数据
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GroupFileSystemInfo {
+    pub file_count: i32,
+    pub limit_count: i32,
+    pub used_space: i64,
+    pub total_space: i64,
+}
+
+// get_group_root_files 响应数据
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GroupRootFiles {
+    pub files: Files,
+    pub folders: Folders,
+}
+
+// get_group_root_files 响应数据
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GroupFilesByFolder {
+    pub files: Files,
+    pub folders: Folders,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Files {
+    pub group_id: i64,
+    pub file_id: String,
+    pub file_name: String,
+    pub busid: i32,
+    pub file_size: i64,
+    pub upload_time: i64,
+    pub dead_time: i64,
+    pub modify_time: i64,
+    pub download_times: i32,
+    pub uploader: i64,
+    pub uploader_name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Folders {
+    pub group_id: i64,
+    pub folder_id: String,
+    pub folder_name: i64,
+    pub creator: i64,
+    pub creator_name: String,
+    pub total_file_count: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GroupFileUrl {
+    pub url: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DownloadFiles {
+    pub file: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UrlSafely {
+    pub level: i8,
+}
+
+

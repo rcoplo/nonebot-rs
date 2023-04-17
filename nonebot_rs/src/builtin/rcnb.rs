@@ -8,7 +8,7 @@ pub struct Rcnb {}
 #[doc(hidden)]
 #[async_trait]
 impl Handler<MessageEvent> for Rcnb {
-    on_command!(MessageEvent, "rcnb", "RCNB", "Rcnb");
+    _on_command!(MessageEvent, "rcnb", "RCNB", "Rcnb");
     async fn handle(&self, event: MessageEvent, matcher: Matcher<MessageEvent>) {
         let msg = matcher
             .request_message(Some(&event), Some("Please enter something."))

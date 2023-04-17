@@ -1,9 +1,10 @@
+use std::sync::Arc;
 // use nbrs_matcher_r6s::r6s;
 use nonebot_rs;
 
 mod clock;
 
-fn main() {
+async fn main() {
     let mut nb = nonebot_rs::Nonebot::new();
 
     let mut matchers = nonebot_rs::Matchers::new_empty();
@@ -14,9 +15,10 @@ fn main() {
 
     let lua = nbrs_lua::LuaPlugin::new();
     nb.add_plugin(lua);
-
-    let mut scheduler = nonebot_rs::Scheduler::new();
-    scheduler.add_job(clock::clock(&nb));
+    let mut scheduler = nonebot_rs::Scheduler::new(
+        nb.bot_getter.borrow().clone()
+    );
+    scheduler.add(clock::clock(&nb));
     nb.add_plugin(scheduler);
 
     nb.run()

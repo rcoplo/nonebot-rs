@@ -11,7 +11,7 @@ mod _api;
 #[derive(Debug, Clone)]
 pub struct Bot {
     /// bot id
-    pub bot_id: String,
+    pub bot_id: i64,
     /// connect timestamp
     pub connect_time: i64,
     // Bot Config
@@ -26,28 +26,28 @@ pub struct Bot {
 
 impl Bot {
     pub fn new(
-        bot_id: String,
+        bot_id: i64,
         config: config::BotConfig,
         api_sender: mpsc::Sender<ApiChannelItem>,
         action_sender: crate::ActionSender,
         api_resp_watcher: watch::Receiver<ApiResp>,
     ) -> Self {
         Bot {
-            bot_id: bot_id,
+            bot_id,
             connect_time: crate::utils::timestamp(),
-            config: config,
-            api_sender: api_sender,
-            action_sender: action_sender,
-            api_resp_watcher: api_resp_watcher,
+            config,
+            api_sender,
+            action_sender,
+            api_resp_watcher,
         }
     }
 
     /// Send Group Msg
-    pub async fn send_group_msg(&self, group_id: &str, msg: Vec<message::Message>) {
+    pub async fn send_group_msg_nrv(&self, group_id: i64, msg: crate::message::MessageChain) {
         self.api_sender
             .send(ApiChannelItem::Api(crate::api::Api::send_group_msg(
                 crate::api::SendGroupMsg {
-                    group_id: group_id.to_string(),
+                    group_id,
                     message: msg.clone(),
                     auto_escape: false,
                 },
@@ -57,18 +57,18 @@ impl Bot {
         event!(
             Level::INFO,
             "Bot [{}] Send {:?} to Group ({})",
-            self.config.bot_id.red(),
+            self.config.bot_id.to_string().red(),
             msg,
             group_id.to_string().magenta()
         );
     }
 
     /// Send Private Msg
-    pub async fn send_private_msg(&self, user_id: &str, msg: Vec<message::Message>) {
+    pub async fn send_private_msg_nrv(&self, user_id: i64, msg: crate::message::MessageChain) {
         self.api_sender
             .send(ApiChannelItem::Api(crate::api::Api::send_private_msg(
                 crate::api::SendPrivateMsg {
-                    user_id: user_id.to_string(),
+                    user_id,
                     message: msg.clone(),
                     auto_escape: false,
                 },
@@ -78,17 +78,24 @@ impl Bot {
         event!(
             Level::INFO,
             "Bot [{}] Send {:?} to Friend ({})",
-            self.config.bot_id.red(),
+            self.config.bot_id.to_string().red(),
             msg,
             user_id.to_string().green()
         );
     }
 
     /// 根据 MessageEvent 类型发送私聊消息或群消息
-    pub async fn send_by_message_event(&self, event: &MessageEvent, msg: Vec<message::Message>) {
+    pub async fn send_by_message_event(&self, event: &MessageEvent, msg: crate::message::MessageChain) -> Option<crate::api_resp::MessageId> {
         match event {
-            MessageEvent::Private(p) => self.send_private_msg(&p.user_id, msg).await,
-            MessageEvent::Group(g) => self.send_group_msg(&g.group_id, msg).await,
+            MessageEvent::Private(p) => self.send_private_msg(p.user_id, msg, false).await,
+            MessageEvent::Group(g) => self.send_group_msg(g.group_id, msg, false).await,
+        }
+    }
+    /// 根据 MessageEvent 类型发送私聊消息或群消息 不带返回值
+    pub async fn send_by_message_event_nrv(&self, event: &MessageEvent, msg: crate::message::MessageChain) {
+        match event {
+            MessageEvent::Private(p) => self.send_private_msg_nrv(p.user_id, msg).await,
+            MessageEvent::Group(g) => self.send_group_msg_nrv(g.group_id, msg).await,
         }
     }
 
@@ -101,7 +108,7 @@ impl Bot {
         event!(
             Level::INFO,
             "Bot [{}] Calling Api {:?}",
-            self.config.bot_id.red(),
+            self.config.bot_id.to_string().red(),
             api
         );
     }
@@ -116,7 +123,7 @@ impl Bot {
         event!(
             Level::INFO,
             "Bot [{}] Calling Api {:?}",
-            self.config.bot_id.red(),
+            self.config.bot_id.to_string().red(),
             api
         );
         let time = utils::timestamp();

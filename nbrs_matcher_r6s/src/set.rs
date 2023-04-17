@@ -3,7 +3,7 @@ use nonebot_rs::{
     async_trait,
     event::{MessageEvent, SelfId, UserId},
     matcher::{Handler, Matcher},
-    on_command,
+    _on_command,
 };
 use std::sync::Arc;
 
@@ -14,7 +14,7 @@ pub struct R6sSet {
 
 #[async_trait]
 impl Handler<MessageEvent> for R6sSet {
-    on_command!(MessageEvent, "R6sset", "r6sset", "R6set", "r6set");
+    _on_command!(MessageEvent, "R6sset", "r6sset", "R6set", "r6set");
 
     async fn handle(&self, event: MessageEvent, matcher: Matcher<MessageEvent>) {
         let nickname = matcher
@@ -22,7 +22,7 @@ impl Handler<MessageEvent> for R6sSet {
             .await;
         if let Some(nickname) = nickname {
             set(
-                &event.get_self_id(),
+                event.get_self_id(),
                 event.get_user_id(),
                 nickname.to_string(),
             );

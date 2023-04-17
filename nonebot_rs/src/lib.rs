@@ -77,7 +77,7 @@
 //!
 //! #[async_trait]
 //! impl Handler<MessageEvent> for Rcnb {
-//!     on_command!(MessageEvent, "rcnb", "RCNB", "Rcnb"); // 注册该 Matcher 的命令匹配器
+//!     _on_command!(MessageEvent, "rcnb", "RCNB", "Rcnb"); // 注册该 Matcher 的命令匹配器
 //!     async fn handle(&self, event: MessageEvent, matcher: Matcher<MessageEvent>) {
 //!         // 请求获取 msg，event raw_message 为空则发送消息请求消息
 //!         let msg = matcher
@@ -237,9 +237,9 @@ pub type ActionSender = mpsc::Sender<Action>;
 /// Nonebot Action Sender，Bot 发送，Nonebot 接收
 pub type ActionReceiver = mpsc::Receiver<Action>;
 /// 广播所有可用的 Bot
-pub type BotSender = watch::Sender<HashMap<String, Bot>>;
+pub type BotSender = watch::Sender<HashMap<i64, Bot>>;
 /// 接收广播的所有可用 Bot
-pub type BotGetter = watch::Receiver<HashMap<String, Bot>>;
+pub type BotGetter = watch::Receiver<HashMap<i64, Bot>>;
 /// nbrs 本体
 ///
 /// 用于注册 `Matcher`，暂存配置项，以及启动实例
@@ -247,7 +247,7 @@ pub struct Nonebot {
     /// Nonebot 设置
     pub config: config::NbConfig,
     /// 储存 Nonebot 下连接的 Bot
-    pub bots: HashMap<String, Bot>,
+    pub bots: HashMap<i64, Bot>,
     /// 暂存 Events Sender 由 WebSocket 广播 Event
     event_sender: EventSender,
     /// Nonebot Action Sender

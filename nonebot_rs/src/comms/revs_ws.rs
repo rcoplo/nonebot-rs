@@ -48,7 +48,7 @@ async fn accept_connection(
     stream
         .peer_addr()
         .expect("connected streams should have a peer address");
-    let mut output_bot_id = String::new();
+    let mut output_bot_id = 0;
 
     // callback to check headers && get bot_id
     let callback =
@@ -60,14 +60,14 @@ async fn accept_connection(
                 headers.get("User-Agent"),
             ) {
                 let bot_id = bot_id.to_str().unwrap();
-                output_bot_id = bot_id.to_owned();
+                output_bot_id = bot_id.to_owned().parse().unwrap();
                 let client_role = client_role.to_str().unwrap();
                 let user_agent = user_agent.to_str().unwrap();
                 let auth: Option<String> = headers
                     .get("Authorization")
                     .map(|auth| auth.to_str().unwrap().to_owned());
 
-                if client_role == "Universal" && access_token.check_auth(bot_id, auth) {
+                if client_role == "Universal" && access_token.check_auth(output_bot_id, auth) {
                     event!(
                         Level::INFO,
                         "{} Client {} is connectted. The client type is {}",
@@ -98,10 +98,10 @@ async fn accept_connection(
     // add bot to Nonebot
     action_sender
         .send(crate::Action::AddBot {
-            bot_id: output_bot_id.clone(),
+            bot_id: output_bot_id,
             api_sender: sender,
             action_sender: action_sender.clone(),
-            api_resp_watcher: api_resp_watcher,
+            api_resp_watcher,
         })
         .await
         .unwrap();

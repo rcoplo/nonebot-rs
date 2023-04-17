@@ -14,14 +14,14 @@ use tokio_tungstenite::{client_async, tungstenite::handshake::client::Request};
 #[async_recursion]
 pub async fn run(
     url: String,
-    bot_id: String,
+    bot_id: i64,
     event_sender: EventSender,
     action_sender: ActionSender,
     access_token: crate::config::AccessToken,
 ) {
     single_socket(
         &url,
-        &bot_id,
+        bot_id,
         event_sender.clone(),
         action_sender.clone(),
         access_token.clone(),
@@ -33,7 +33,7 @@ pub async fn run(
 
 pub async fn single_socket(
     url: &str,
-    bot_id: &str,
+    bot_id: i64,
     event_sender: EventSender,
     action_sender: ActionSender,
     access_token: crate::config::AccessToken,
@@ -84,15 +84,15 @@ pub async fn single_socket(
                         let event: Event = serde_json::from_str(msg).unwrap();
                         let bot_id = event.get_self_id();
 
-                        event!(Level::INFO, "Connectted to Bot {} Server", bot_id.red());
+                        event!(Level::INFO, "Connectted to Bot {} Server", bot_id.to_string().red());
 
                         // add bot to Nonebot
                         action_sender
                             .send(crate::Action::AddBot {
-                                bot_id: bot_id.clone(),
+                                bot_id,
                                 api_sender: sender,
                                 action_sender: action_sender.clone(),
-                                api_resp_watcher: api_resp_watcher,
+                                api_resp_watcher,
                             })
                             .await
                             .unwrap();

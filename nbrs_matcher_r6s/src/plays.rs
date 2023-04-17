@@ -3,7 +3,7 @@ use nonebot_rs::{
     async_trait,
     event::MessageEvent,
     matcher::{Handler, Matcher},
-    on_command,
+    _on_command,
 };
 use serde_json::Value;
 use std::sync::Arc;
@@ -15,7 +15,7 @@ pub struct R6sPlays {
 
 #[async_trait]
 impl Handler<MessageEvent> for R6sPlays {
-    on_command!(MessageEvent, "R6sp", "r6sp", "R6p", "r6p");
+    _on_command!(MessageEvent, "R6sp", "r6sp", "R6p", "r6p");
 
     async fn handle(&self, event: MessageEvent, matcher: Matcher<MessageEvent>) {
         let nickname = get(event);

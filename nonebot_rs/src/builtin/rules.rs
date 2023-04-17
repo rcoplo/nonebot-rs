@@ -12,7 +12,7 @@ where
     let is_superuser = |event: &E, config: &BotConfig| -> bool {
         let user_id = event.get_user_id();
         for superuser in &config.superusers {
-            if &user_id == superuser {
+            if user_id == superuser.parse::<i64>().expect("内容仅能是整数!") {
                 return true;
             }
         }
@@ -22,9 +22,9 @@ where
 }
 
 /// 判定是否为指定 Bot
-pub fn is_bot<E>(bot_id: String) -> Rule<E>
-where
-    E: SelfId,
+pub fn is_bot<E>(bot_id: i64) -> Rule<E>
+    where
+        E: SelfId,
 {
     let is_bot = move |event: &E, _: &BotConfig| -> bool {
         let self_id = event.get_self_id();
@@ -37,9 +37,9 @@ where
 }
 
 /// 判定 sender 是否为指定 user
-pub fn is_user<E>(user_id: String) -> Rule<E>
-where
-    E: UserId,
+pub fn is_user<E>(user_id: i64) -> Rule<E>
+    where
+        E: UserId,
 {
     let is_user = move |event: &E, _: &BotConfig| -> bool {
         let id = event.get_user_id();
@@ -52,7 +52,7 @@ where
 }
 
 /// 判定 event 是否来自指定 group
-pub fn in_group(group_id: String) -> Rule<MessageEvent> {
+pub fn in_group(group_id: i64) -> Rule<MessageEvent> {
     let in_group = move |event: &MessageEvent, _: &BotConfig| -> bool {
         if let MessageEvent::Group(g) = event {
             if g.group_id == group_id {

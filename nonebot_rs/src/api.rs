@@ -1,6 +1,7 @@
+
 use serde::{Deserialize, Serialize};
 
-/// Onebot Api 定义
+/// Onebot Api ����
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(tag = "action")]
 pub enum Api {
@@ -109,10 +110,82 @@ pub enum Api {
     GetStatus { params: Option<i8>, echo: String },
     #[serde(rename = "get_version_info")]
     GetVersionInfo { params: Option<i8>, echo: String },
+    /// go-cqhttp 该 API 由于技术原因，自 1.0.0 版本已被移除，目前暂时没有再加入的计划  [#1230](https://github.com/Mrs4s/go-cqhttp/issues/1230)
     #[serde(rename = "set_restart")]
     SetRestart { params: SetRestart, echo: String },
     #[serde(rename = "clean_cache")]
     CleanCache { params: Option<i8>, echo: String },
+
+    /// 以下是程序没有的api  [go-cqhttp](https://docs.go-cqhttp.org/api/)
+    #[serde(rename = "set_qq_profile")]
+    SetQqProfile { params: SetQqProfile, echo: String },
+    #[serde(rename = "_get_model_show")]
+    GetModelShow { params: GetModelShow, echo: String },
+    /// [例子](https://github.com/Mrs4s/go-cqhttp/pull/872#issuecomment-831180149)
+    #[serde(rename = "_set_model_show")]
+    SetModelShow { params: SetModelShow, echo: String },
+    #[serde(rename = "get_online_clients")]
+    GetOnlineClients { params: GetOnlineClients, echo: String },
+    #[serde(rename = "get_unidirectional_friend_list")]
+    GetUnidirectionalFriendList { params: Option<i8>, echo: String },
+    #[serde(rename = "delete_friend")]
+    DeleteFriend { params: DeleteFriend, echo: String },
+    #[serde(rename = "delete_unidirectional_friend")]
+    DeleteUnidirectionalFriend { params: DeleteUnidirectionalFriend, echo: String },
+    #[serde(rename = "mark_msg_as_read")]
+    MarkMsgAsRead { params: MarkMsgAsRead, echo: String },
+    #[serde(rename = "send_group_forward_msg")]
+    SendGroupForwardMsg { params: SendGroupForwardMsg, echo: String },
+    #[serde(rename = "send_private_forward_msg")]
+    SendPrivateForwardMsg { params: SendPrivateForwardMsg, echo: String },
+    #[serde(rename = "get_group_msg_history")]
+    GetGroupMsgHistory { params: GetGroupMsgHistory, echo: String },
+    #[serde(rename = "ocr_image")]
+    OcrImage { params: OcrImage, echo: String },
+    #[serde(rename = "get_group_system_msg")]
+    GetGroupSystemMsg { params: Option<i8>, echo: String },
+    #[serde(rename = "get_essence_msg_list")]
+    GetEssenceMsgList { params: GetEssenceMsgList, echo: String },
+    #[serde(rename = "get_group_at_all_remain")]
+    GetGroupAtAllRemain { params: GetGroupAtAllRemain, echo: String },
+    #[serde(rename = "set_group_portrait")]
+    SetGroupPortrait { params: SetGroupPortrait, echo: String },
+    #[serde(rename = "set_essence_msg")]
+    SetEssenceMsg { params: SetEssenceMsg, echo: String },
+    #[serde(rename = "delete_essence_msg")]
+    DeleteEssenceMsg { params: DeleteEssenceMsg, echo: String },
+    #[serde(rename = "send_group_sign")]
+    SendGroupSign { params: SendGroupSign, echo: String },
+    #[serde(rename = "_send_group_notice")]
+    SendGroupNotice { params: SendGroupNotice, echo: String },
+    #[serde(rename = "_get_group_notice")]
+    GetGroupNotice { params: GetGroupNotice, echo: String },
+
+    /// 操作群文件api
+    #[serde(rename = "upload_group_file")]
+    UploadGroupFile { params: UploadGroupFile, echo: String },
+    #[serde(rename = "delete_group_file")]
+    DeleteGroupFile { params: DeleteGroupFile, echo: String },
+    #[serde(rename = "create_group_file_folder")]
+    CreateGroupFileFolder { params: CreateGroupFileFolder, echo: String },
+    #[serde(rename = "delete_group_folder")]
+    DeleteGroupFolder { params: DeleteGroupFolder, echo: String },
+    #[serde(rename = "get_group_file_system_info")]
+    GetGroupFileSystemInfo { params: GetGroupFileSystemInfo, echo: String },
+    #[serde(rename = "get_group_root_files")]
+    GetGroupRootFiles { params: GetGroupRootFiles, echo: String },
+    #[serde(rename = "get_group_files_by_folder")]
+    GetGroupFilesByFolder { params: GetGroupFilesByFolder, echo: String },
+    #[serde(rename = "get_group_file_url")]
+    GetGroupFileUrl { params: GetGroupFileUrl, echo: String },
+    #[serde(rename = "upload_private_file")]
+    UploadPrivateFile { params: UploadPrivateFile, echo: String },
+    #[serde(rename = "download_file")]
+    DownloadFile { params: DownloadFile, echo: String },
+
+    #[serde(rename = "check_url_safely")]
+    CheckUrlSafely { params: CheckUrlSafely, echo: String },
+
 }
 
 macro_rules! echos {
@@ -193,7 +266,39 @@ impl Api {
         GetStatus,
         GetVersionInfo,
         SetRestart,
-        CleanCache
+        CleanCache,
+        SetQqProfile,
+        GetModelShow,
+        SetModelShow,
+        GetOnlineClients,
+        GetUnidirectionalFriendList,
+        DeleteFriend,
+        DeleteUnidirectionalFriend,
+        MarkMsgAsRead,
+        SendGroupForwardMsg,
+        SendPrivateForwardMsg,
+        GetGroupMsgHistory,
+        OcrImage,
+        GetGroupSystemMsg,
+        GetEssenceMsgList,
+        GetGroupAtAllRemain,
+        SetGroupPortrait,
+        SetEssenceMsg,
+        DeleteEssenceMsg,
+        SendGroupSign,
+        SendGroupNotice,
+        GetGroupNotice,
+        UploadGroupFile,
+        DeleteGroupFile,
+        CreateGroupFileFolder,
+        DeleteGroupFolder,
+        GetGroupFileSystemInfo,
+        GetGroupRootFiles,
+        GetGroupFilesByFolder,
+        GetGroupFileUrl,
+        UploadPrivateFile,
+        DownloadFile,
+        CheckUrlSafely
     );
 
     // pub fn get_group_list() -> Api {
@@ -211,7 +316,9 @@ impl Api {
         (can_send_record, CanSendRecord),
         (get_status, GetStatus),
         (get_version_info, GetVersionInfo),
-        (clean_cache, CleanCache)
+        (clean_cache, CleanCache),
+        (get_unidirectional_friend_list, GetUnidirectionalFriendList),
+        (get_group_system_msg, GetGroupSystemMsg)
     );
 
     // pub fn send_private_msg(params: SendPrivateMsg) -> Api {
@@ -249,21 +356,51 @@ impl Api {
         (get_credentials, GetCookies),
         (get_record, GetRecord),
         (get_image, GetImage),
-        (set_restart, SetRestart)
+        (set_restart, SetRestart),
+        (set_qq_profile, SetQqProfile),
+        (get_model_show, GetModelShow),
+        (set_model_show, SetModelShow),
+        (get_online_clients, GetOnlineClients),
+        (delete_friend, DeleteFriend),
+        (delete_unidirectional_friend, DeleteUnidirectionalFriend),
+        (mark_msg_as_read, MarkMsgAsRead),
+        (send_group_forward_msg, SendGroupForwardMsg),
+        (send_private_forward_msg, SendPrivateForwardMsg),
+        (get_group_msg_history, GetGroupMsgHistory),
+        (ocr_image, OcrImage),
+        (get_essence_msg_list, GetEssenceMsgList),
+        (get_group_at_all_remain, GetGroupAtAllRemain),
+        (set_group_portrait, SetGroupPortrait),
+        (set_essence_msg, SetEssenceMsg),
+        (delete_essence_msg, DeleteEssenceMsg),
+        (send_group_sign, SendGroupSign),
+        (send_group_notice, SendGroupNotice),
+        (get_group_notice, GetGroupNotice),
+        (upload_group_file, UploadGroupFile),
+        (delete_group_file, DeleteGroupFile),
+        (create_group_file_folder, CreateGroupFileFolder),
+        (delete_group_folder, DeleteGroupFolder),
+        (get_group_file_system_info, GetGroupFileSystemInfo),
+        (get_group_root_files, GetGroupRootFiles),
+        (get_group_files_by_folder, GetGroupFilesByFolder),
+        (get_group_file_url, GetGroupFileUrl),
+        (upload_private_file, UploadPrivateFile),
+        (download_file, DownloadFile),
+        (check_url_safely, CheckUrlSafely)
     );
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SendPrivateMsg {
-    pub user_id: String,
-    pub message: Vec<crate::message::Message>,
+    pub user_id: i64,
+    pub message: crate::message::MessageChain,
     pub auto_escape: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SendGroupMsg {
-    pub group_id: String,
-    pub message: Vec<crate::message::Message>,
+    pub group_id: i64,
+    pub message: crate::message::MessageChain,
     pub auto_escape: bool,
 }
 
@@ -272,7 +409,7 @@ pub struct SendMsg {
     pub message_type: Option<String>,
     pub user_id: Option<String>,
     pub group_id: Option<String>,
-    pub message: Vec<crate::message::Message>,
+    pub message: crate::message::MessageChain,
     pub auto_escape: bool,
 }
 
@@ -293,27 +430,27 @@ pub struct GetForwardMsg {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SendLike {
-    pub user_id: String,
+    pub user_id: i64,
     pub times: u8,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SetGroupKick {
-    pub group_id: String,
-    pub user_id: String,
+    pub group_id: i64,
+    pub user_id: i64,
     pub reject_add_request: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SetGroupBan {
-    pub group_id: String,
-    pub user_id: String,
-    pub duration: i64, // 禁言时长，单位秒，0表示取消禁言
+    pub group_id: i64,
+    pub user_id: i64,
+    pub duration: i64, // ???????????????0??????????
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SetGroupAnonymousBan {
-    pub group_id: String,
+    pub group_id: i64,
     pub anonymous: crate::event::Anoymous,
     pub flag: String,
     pub duration: i64,
@@ -321,46 +458,46 @@ pub struct SetGroupAnonymousBan {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SetGroupWholeBan {
-    pub group_id: String,
+    pub group_id: i64,
     pub enable: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SetGroupAdmin {
-    pub group_id: String,
-    pub user_id: String,
+    pub group_id: i64,
+    pub user_id: i64,
     pub enable: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SetGroupAnonymous {
-    pub group_id: String,
+    pub group_id: i64,
     pub enable: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SetGroupCard {
-    pub group_id: String,
-    pub user_id: String,
+    pub group_id: i64,
+    pub user_id: i64,
     pub card: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SetGroupName {
-    pub group_id: String,
+    pub group_id: i64,
     pub group_name: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SetGroupLeave {
-    pub group_id: String,
+    pub group_id: i64,
     pub is_dismiss: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SetGroupSpecialTitle {
-    pub group_id: String,
-    pub user_id: String,
+    pub group_id: i64,
+    pub user_id: i64,
     pub special_title: String,
     pub duration: i64,
 }
@@ -382,31 +519,31 @@ pub struct SetGroupAddRequest {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GetStrangerInfo {
-    pub user_id: String,
+    pub user_id: i64,
     pub no_cache: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GetGroupInfo {
-    pub group_id: String,
+    pub group_id: i64,
     pub no_cache: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GetGroupMemberInfo {
-    pub group_id: String,
-    pub user_id: String,
+    pub group_id: i64,
+    pub user_id: i64,
     pub no_cache: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GetGroupMemberList {
-    pub group_id: String,
+    pub group_id: i64,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GetGroupHonorInfo {
-    pub group_id: String,
+    pub group_id: i64,
     #[serde(rename = "type")]
     pub type_: String,
 }
@@ -431,3 +568,183 @@ pub struct GetImage {
 pub struct SetRestart {
     pub delay: i64,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SetQqProfile {
+    pub nickname: Option<String>,
+    pub company: Option<String>,
+    pub email: Option<String>,
+    pub college: Option<String>,
+    pub personal_note: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GetModelShow {
+    pub model: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SetModelShow {
+    pub model: String,
+    pub model_show: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GetOnlineClients {
+    pub no_cache: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DeleteFriend {
+    pub user_id: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DeleteUnidirectionalFriend {
+    pub user_id: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MarkMsgAsRead {
+    pub message_id: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SendGroupForwardMsg {
+    pub group_id: i64,
+    pub messages: crate::message::MessageChain,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SendPrivateForwardMsg {
+    pub user_id: i64,
+    pub messages: crate::message::MessageChain,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GetGroupMsgHistory {
+    pub message_seq: String,
+    pub group_id: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct OcrImage {
+    pub image: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GetEssenceMsgList {
+    pub group_id: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GetGroupAtAllRemain {
+    pub group_id: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SetGroupPortrait {
+    pub group_id: i64,
+    pub file: String,
+    pub cache: i8,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SetEssenceMsg {
+    pub message_id: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DeleteEssenceMsg {
+    pub message_id: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SendGroupSign {
+    pub message_id: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct SendGroupNotice {
+    pub group_id: i64,
+    pub content: String,
+    pub image: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GetGroupNotice {
+    pub group_id: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UploadGroupFile {
+    pub group_id: i64,
+    pub file: String,
+    pub name: String,
+    pub folder: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DeleteGroupFile {
+    pub group_id: i64,
+    pub file_id: String,
+    pub busid: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CreateGroupFileFolder {
+    pub group_id: i64,
+    pub name: String,
+    ///仅能为 `/`
+    pub parent_id: String,
+}
+
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DeleteGroupFolder {
+    pub group_id: i64,
+    pub folder_id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GetGroupFileSystemInfo {
+    pub group_id: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GetGroupRootFiles {
+    pub group_id: i64,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GetGroupFilesByFolder {
+    pub group_id: i64,
+    pub folder_id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GetGroupFileUrl {
+    pub group_id: i64,
+    pub file_id: String,
+    pub busid: i32,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UploadPrivateFile {
+    pub user_id: i64,
+    pub file: String,
+    pub name: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DownloadFile {
+    pub url: String,
+    pub thread_count: i32,
+    pub headers: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct CheckUrlSafely {
+    pub url: String,
+}
+

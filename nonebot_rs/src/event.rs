@@ -1,5 +1,5 @@
-use crate::message::Message;
-use crate::utils::{id_deserializer, option_id_deserializer};
+use futures_util::SinkExt;
+use crate::message::{Message, MessageChain};
 use serde::{Deserialize, Serialize};
 
 /// WebSocket 接受数据枚举 Event || ApiResp
@@ -91,10 +91,10 @@ impl MessageEvent {
 
     /// 消息事件数组格式消息
     #[allow(dead_code)]
-    pub fn get_message(&self) -> &Vec<Message> {
+    pub fn get_message_chain(&self) -> MessageChain {
         match self {
-            MessageEvent::Private(p) => &p.message,
-            MessageEvent::Group(g) => &g.message,
+            MessageEvent::Private(p) => p.message.clone(),
+            MessageEvent::Group(g) => g.message.clone(),
         }
     }
 
@@ -106,6 +106,22 @@ impl MessageEvent {
             MessageEvent::Group(g) => &g.sender.nickname,
         }
     }
+    /// 消息id
+    #[allow(dead_code)]
+    pub fn get_message_id(&self) -> i32 {
+        match self {
+            MessageEvent::Private(p) => p.message_id,
+            MessageEvent::Group(g) => g.message_id,
+        }
+    }
+    /// 消息发送者 user_id
+    #[allow(dead_code)]
+    pub fn get_sender_user_id(&self) -> i64 {
+        match self {
+            MessageEvent::Private(p) => p.user_id,
+            MessageEvent::Group(g) => g.user_id,
+        }
+    }
 }
 
 /// 私聊消息事件
@@ -114,17 +130,15 @@ pub struct PrivateMessageEvent {
     /// Event 时间戳
     pub time: i64,
     /// 收到事件的机器人 QQ 号
-    #[serde(deserialize_with = "id_deserializer")]
-    pub self_id: String,
+    pub self_id: i64,
     /// 消息子类型
     pub sub_type: String,
     /// 消息 ID
     pub message_id: i32,
     /// 发送者 ID
-    #[serde(deserialize_with = "id_deserializer")]
-    pub user_id: String,
+    pub user_id: i64,
     /// Array 消息内容
-    pub message: Vec<Message>,
+    pub message: MessageChain,
     /// 原生消息内容
     pub raw_message: String,
     /// 字体
@@ -137,8 +151,7 @@ pub struct PrivateMessageEvent {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PrivateSender {
     /// 发送者 QQ 号
-    #[serde(deserialize_with = "id_deserializer")]
-    pub user_id: String,
+    pub user_id: i64,
     /// 昵称
     pub nickname: String,
     /// 性别 male|female|unkown
@@ -153,22 +166,19 @@ pub struct GroupMessageEvent {
     /// Event 时间戳
     pub time: i64,
     /// 收到事件的机器人 QQ 号
-    #[serde(deserialize_with = "id_deserializer")]
-    pub self_id: String,
+    pub self_id: i64,
     /// 消息子类型
     pub sub_type: String,
     /// 消息 ID
     pub message_id: i32,
     /// 群消息群号
-    #[serde(deserialize_with = "id_deserializer")]
-    pub group_id: String,
+    pub group_id: i64,
     /// 发送者 ID
-    #[serde(deserialize_with = "id_deserializer")]
-    pub user_id: String,
+    pub user_id: i64,
     /// 匿名消息 非匿名消息为空
     pub anonymous: Option<Anoymous>,
     /// Array 消息内容
-    pub message: Vec<Message>,
+    pub message: MessageChain,
     /// 原生消息内容
     pub raw_message: String,
     /// 字体
@@ -181,8 +191,7 @@ pub struct GroupMessageEvent {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GroupSender {
     /// 发送者 QQ 号
-    #[serde(deserialize_with = "id_deserializer")]
-    pub user_id: String,
+    pub user_id: i64,
     /// 昵称
     pub nickname: String,
     /// 群名片|备注
@@ -205,8 +214,7 @@ pub struct GroupSender {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Anoymous {
     /// 匿名用户 ID
-    #[serde(deserialize_with = "id_deserializer")]
-    pub id: String,
+    pub id: i64,
     /// 匿名用户名称
     pub name: String,
     /// 匿名用户 flag
@@ -219,23 +227,19 @@ pub struct NoticeEvent {
     /// Event 时间戳
     pub time: i64,
     /// 收到事件的机器人 QQ 号
-    #[serde(deserialize_with = "id_deserializer")]
-    pub self_id: String,
+    pub self_id: i64,
     /// 上报类型
     pub notice_type: String,
     /// 事件子类型
     pub sub_type: Option<String>,
-    /// 群消息群号
-    #[serde(deserialize_with = "option_id_deserializer")]
+
     #[serde(default)]
-    pub group_id: Option<String>,
+    pub group_id: Option<i64>,
     /// 操作者 QQ 号
-    #[serde(deserialize_with = "option_id_deserializer")]
     #[serde(default)]
-    pub operator_id: Option<String>,
+    pub operator_id: Option<i64>,
     /// 发送者 ID
-    #[serde(deserialize_with = "id_deserializer")]
-    pub user_id: String,
+    pub user_id: i64,
     /// 文件信息
     pub file: Option<File>,
     /// 禁言时长，单位秒
@@ -243,9 +247,8 @@ pub struct NoticeEvent {
     /// 被撤回的消息 ID
     pub message_id: Option<i64>,
     /// 目标 QQ 号
-    #[serde(deserialize_with = "option_id_deserializer")]
     #[serde(default)]
-    pub target_id: Option<String>,
+    pub target_id: Option<i64>,
     /// 群荣耀类型
     pub honor_type: Option<String>,
 }
@@ -269,13 +272,11 @@ pub struct RequestEvent {
     /// Event 时间戳
     pub time: i64,
     /// 收到事件的机器人 QQ 号
-    #[serde(deserialize_with = "id_deserializer")]
-    pub self_id: String,
+    pub self_id: i64,
     /// 请求类型
     pub request_type: String,
     /// 发送请求的 QQ 号
-    #[serde(deserialize_with = "id_deserializer")]
-    pub user_id: String,
+    pub user_id: i64,
     /// 验证信息
     pub comment: String,
     /// 请求 flag
@@ -283,9 +284,8 @@ pub struct RequestEvent {
     /// 请求子类型
     pub sub_type: Option<String>,
     /// 群号
-    #[serde(deserialize_with = "option_id_deserializer")]
     #[serde(default)]
-    pub group_id: Option<String>,
+    pub group_id: Option<i64>,
 }
 
 /// 元事件
@@ -294,8 +294,7 @@ pub struct MetaEvent {
     /// Event 时间戳
     pub time: i64,
     /// 收到事件的机器人 QQ 号
-    #[serde(deserialize_with = "id_deserializer")]
-    pub self_id: String,
+    pub self_id: i64,
     /// 元事件类型 lifecycle|heartbeat
     pub meta_event_type: String,
     /// 事件子类型
@@ -323,72 +322,72 @@ pub struct Status {
 
 /// `get_user_id()` trait
 pub trait UserId {
-    fn get_user_id(&self) -> String;
+    fn get_user_id(&self) -> i64;
 }
 
 impl UserId for MessageEvent {
-    fn get_user_id(&self) -> String {
+    fn get_user_id(&self) -> i64 {
         match self {
-            MessageEvent::Private(p) => p.user_id.to_string(),
-            MessageEvent::Group(g) => g.user_id.to_string(),
+            MessageEvent::Private(p) => p.user_id,
+            MessageEvent::Group(g) => g.user_id,
         }
     }
 }
 
 impl UserId for NoticeEvent {
-    fn get_user_id(&self) -> String {
-        self.user_id.clone()
+    fn get_user_id(&self) -> i64 {
+        self.user_id
     }
 }
 
 impl UserId for RequestEvent {
-    fn get_user_id(&self) -> String {
-        self.user_id.clone()
+    fn get_user_id(&self) -> i64 {
+        self.user_id
     }
 }
 
 /// `get_self_id()` trait
 pub trait SelfId {
-    fn get_self_id(&self) -> String;
+    fn get_self_id(&self) -> i64;
 }
 
 impl SelfId for MessageEvent {
-    fn get_self_id(&self) -> String {
+    fn get_self_id(&self) -> i64 {
         match self {
-            MessageEvent::Private(p) => p.self_id.clone(),
-            MessageEvent::Group(g) => g.self_id.clone(),
+            MessageEvent::Private(p) => p.self_id,
+            MessageEvent::Group(g) => g.self_id,
         }
     }
 }
 
 impl SelfId for RequestEvent {
-    fn get_self_id(&self) -> String {
-        self.self_id.clone()
+    fn get_self_id(&self) -> i64 {
+        self.self_id
     }
 }
 
 impl SelfId for NoticeEvent {
-    fn get_self_id(&self) -> String {
-        self.self_id.clone()
+    fn get_self_id(&self) -> i64 {
+        self.self_id
     }
 }
 
 impl SelfId for MetaEvent {
-    fn get_self_id(&self) -> String {
-        self.self_id.clone()
+    fn get_self_id(&self) -> i64 {
+        self.self_id
     }
 }
 
 impl SelfId for Event {
-    fn get_self_id(&self) -> String {
+    fn get_self_id(&self) -> i64 {
         match self {
             Event::Message(e) => e.get_self_id(),
             Event::Request(e) => e.get_self_id(),
             Event::Notice(e) => e.get_self_id(),
             Event::Meta(e) => e.get_self_id(),
             Event::Nonebot(e) => match e {
-                NbEvent::BotConnect { bot } => bot.bot_id.clone(),
-                NbEvent::BotDisconnect { bot } => bot.bot_id.clone(),
+                NbEvent::BotConnect { bot } => bot.bot_id,
+                NbEvent::BotDisconnect { bot } => bot.bot_id,
             },
         }
     }

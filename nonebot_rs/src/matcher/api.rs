@@ -127,46 +127,46 @@ where
     //     }
     // }
     no_resp_api!(delete_msg, message_id: i32);
-    no_resp_api!(send_like, user_id: String, times: u8);
+    no_resp_api!(send_like, user_id: i64, times: u8);
     no_resp_api!(
         set_group_kick,
-        group_id: String,
-        user_id: String,
+        group_id: i64,
+        user_id: i64,
         reject_add_request: bool
     );
     no_resp_api!(
         set_group_ban,
-        group_id: String,
-        user_id: String,
+        group_id: i64,
+        user_id: i64,
         duration: i64
     );
     no_resp_api!(
         set_group_anonymous_ban,
-        group_id: String,
+        group_id: i64,
         anonymous: crate::event::Anoymous,
         flag: String,
         duration: i64
     );
-    no_resp_api!(set_group_whole_ban, group_id: String, enable: bool);
+    no_resp_api!(set_group_whole_ban, group_id: i64, enable: bool);
     no_resp_api!(
         set_group_admin,
-        group_id: String,
-        user_id: String,
+        group_id: i64,
+        user_id: i64,
         enable: bool
     );
-    no_resp_api!(set_group_anonymous, group_id: String, enable: bool);
+    no_resp_api!(set_group_anonymous, group_id: i64, enable: bool);
     no_resp_api!(
         set_group_card,
-        group_id: String,
-        user_id: String,
+        group_id: i64,
+        user_id: i64,
         card: String
     );
-    no_resp_api!(set_group_name, group_id: String, group_name: String);
-    no_resp_api!(set_group_leave, group_id: String, is_dismiss: bool);
+    no_resp_api!(set_group_name, group_id: i64, group_name: String);
+    no_resp_api!(set_group_leave, group_id: i64, is_dismiss: bool);
     no_resp_api!(
         set_group_special_title,
-        group_id: String,
-        user_id: String,
+        group_id: i64,
+        user_id: i64,
         special_title: String,
         duration: i64
     );
@@ -184,14 +184,79 @@ where
         reason: String
     );
     no_resp_api!(set_restart, delay: i64);
-
+    no_resp_api!(set_qq_profile,
+        nickname: Option<String>,
+        company: Option<String>,
+        email: Option<String>,
+        college: Option<String>,
+        personal_note: Option<String>
+    );
+    no_resp_api!(set_model_show,
+        model: String,
+        model_show: String
+    );
+    no_resp_api!(delete_friend,
+        user_id:i64
+    );
+    no_resp_api!(delete_unidirectional_friend,
+        user_id:i64
+    );
+    no_resp_api!(mark_msg_as_read,
+        message_id:i32
+    );
+    no_resp_api!(set_group_portrait,
+        group_id: i64,
+        file: String,
+        cache: i8
+    );
+    no_resp_api!(set_essence_msg,
+        message_id: i32
+    );
+    no_resp_api!(delete_essence_msg,
+        message_id: i32
+    );
+    no_resp_api!(send_group_sign,
+        group_id: i32
+    );
+    no_resp_api!(send_group_notice,
+        group_id: i64,
+        content: String,
+        image: String
+    );
+    no_resp_api!(delete_group_file,
+        group_id: i64,
+        file_id: String,
+        busid: i32
+    );
+    no_resp_api!(create_group_file_folder,
+        group_id: i64,
+        name: String
+    );
+    no_resp_api!(delete_group_folder,
+        group_id: i64,
+        folder_id: String
+    );
     resp_api!(
         send_msg,
         api_resp::MessageId,
         message_type: Option<String>,
         user_id: Option<String>,
         group_id: Option<String>,
-        message: Vec<crate::Message>,
+        message: crate::message::MessageChain,
+        auto_escape: bool
+    );
+    resp_api!(
+        send_group_msg,
+        api_resp::MessageId,
+        group_id: i64,
+        message: crate::message::MessageChain,
+        auto_escape: bool
+    );
+    resp_api!(
+        send_private_msg,
+        api_resp::MessageId,
+        user_id: i64,
+        message: crate::message::MessageChain,
         auto_escape: bool
     );
     resp_api!(get_msg, api_resp::Message, message_id: i32);
@@ -200,33 +265,33 @@ where
     resp_api!(
         get_stranger_info,
         api_resp::StrangerInfo,
-        user_id: String,
+        user_id: i64,
         no_cache: bool
     );
     resp_api!(get_friend_list, Vec<api_resp::FriendListItem>);
     resp_api!(
         get_group_info,
         api_resp::GroupInfo,
-        group_id: String,
+        group_id: i64,
         no_cache: bool
     );
     resp_api!(get_group_list, Vec<api_resp::GroupListItem>);
     resp_api!(
         get_group_member_info,
         api_resp::GroupMemberInfo,
-        group_id: String,
-        user_id: String,
+        group_id: i64,
+        user_id: i64,
         no_cache: bool
     );
     resp_api!(
         get_group_member_list,
         Vec<api_resp::GroupMember>,
-        group_id: String
+        group_id: i64
     );
     resp_api!(
         get_group_honor_info,
         api_resp::GroupHonorInfo,
-        group_id: String,
+        group_id: i64,
         type_: String
     );
     resp_api!(get_cookies, api_resp::Cookies, domain: String);
@@ -265,4 +330,92 @@ where
     //         None
     //     }
     // }
+    resp_api!(get_model_show,
+        api_resp::ModelVariants,
+        model:String
+    );
+    resp_api!(get_online_clients,
+        api_resp::BotOnlineClients,
+        no_cache: bool
+    );
+    resp_api!(get_unidirectional_friend_list,
+        Vec<api_resp::UnidirectionalFriendList>
+    );
+    resp_api!(send_group_forward_msg,
+        api_resp::ForwardMsgId,
+        group_id: i64,
+        messages: crate::message::MessageChain
+    );
+    resp_api!(send_private_forward_msg,
+        api_resp::ForwardMsgId,
+        user_id: i64,
+        messages: crate::message::MessageChain
+    );
+    resp_api!(get_group_msg_history,
+        api_resp::GroupMsgHistory,
+        group_id: i64,
+        message_seq: String
+    );
+    resp_api!(ocr_image,
+        api_resp::OcrImages,
+        image: String
+    );
+    resp_api!(get_group_system_msg,
+        api_resp::GroupSystemMsg
+    );
+    resp_api!(get_essence_msg_list,
+        Vec<api_resp::EssenceMsgList>,
+        group_id:i64
+    );
+    resp_api!(get_group_at_all_remain,
+        api_resp::GroupAtAllRemain,
+        group_id:i64
+    );
+    resp_api!(get_group_notice,
+        api_resp::GroupNotice,
+        group_id:i64
+    );
+    resp_api!(upload_group_file,
+        crate::ApiResp,
+        group_id:i64,
+        file:String,
+        name:String,
+        folder:Option<String>
+    );
+    resp_api!(upload_private_file,
+        crate::ApiResp,
+        user_id:i64,
+        file:String,
+        name:String
+    );
+
+    resp_api!(download_file,
+        api_resp::DownloadFiles,
+        url:String,
+        thread_count:i32,
+        headers:Vec<String>
+    );
+    resp_api!(get_group_file_system_info,
+        api_resp::GroupFileSystemInfo,
+        group_id:i64
+    );
+    resp_api!(get_group_root_files,
+        api_resp::GroupRootFiles,
+        group_id:i64
+    );
+    resp_api!(get_group_files_by_folder,
+        api_resp::GroupFilesByFolder,
+        group_id:i64,
+        folder_id:String
+    );
+    resp_api!(get_group_file_url,
+        api_resp::GroupRootFiles,
+        group_id:i64,
+        file_id:String,
+        busid:i32
+    );
+    resp_api!(check_url_safely,
+        api_resp::UrlSafely,
+        url:String
+    );
 }

@@ -76,7 +76,7 @@ fn run_lua_script(
                         script_name.blue()
                     );
                     tokio::spawn(async move {
-                        bot.send_by_message_event(&event, vec![Message::text(r_msg)])
+                        bot.send_by_message_event_nrv(&event, vec![Message::text(r_msg)])
                             .await
                     });
                 }

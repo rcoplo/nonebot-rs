@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+
 /// Onebot 协议消息定义
 #[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(tag = "type", content = "data")]
@@ -25,7 +26,7 @@ pub enum Message {
         file: String,
         /// 图片类型 flash 闪照
         #[serde(rename = "type")]
-        type_: Option<String>,
+        ty: Option<String>,
         /// 图片 URL
         url: Option<String>,
         /// 是否使用缓存文件 1|0
@@ -56,16 +57,12 @@ pub enum Message {
     /// 短视频
     #[serde(rename = "video")]
     Video {
-        /// 视频文件名
+        /// 视频地址
         file: String,
-        /// 视频 URL
-        url: Option<String>,
-        /// 是否使用缓存文件 1|0
-        cache: Option<u8>,
-        /// 是否使用代理 1|0
-        proxy: Option<u8>,
-        /// 网络文件下载超时 单位秒
-        timeout: Option<i64>,
+        /// 视频封面
+        cover: String,
+        /// 通过网络下载视频时的线程数 2|3
+        c: Option<u8>,
     },
 
     /// @某人
@@ -73,6 +70,8 @@ pub enum Message {
     At {
         /// @QQ ID all 表示全体
         qq: String,
+        /// 当在群中找不到此QQ号的名称时才会生效
+        name: Option<String>,
     },
 
     /// 猜拳魔法表情
@@ -90,13 +89,8 @@ pub enum Message {
     /// 戳一戳
     #[serde(rename = "poke")]
     Poke {
-        /// 类型
-        #[serde(rename = "type")]
-        type_: String,
         /// ID
-        id: String,
-        /// 表情名
-        name: Option<String>,
+        qq: String,
     },
 
     /// 匿名发消息
@@ -121,7 +115,7 @@ pub enum Message {
     Contact {
         /// 类型 qq|group
         #[serde(rename = "type")]
-        type_: String,
+        ty: String,
         /// QQ号|群号
         id: String,
     },
@@ -144,7 +138,7 @@ pub enum Message {
     Music {
         /// 类型 qq|163|xm|custom
         #[serde(rename = "type")]
-        type_: String,
+        ty: String,
         /// 歌曲 ID
         id: Option<String>,
         /// 点击后跳转 URL
@@ -164,6 +158,10 @@ pub enum Message {
     Reply {
         /// 回复的消息 ID
         id: String,
+        text: Option<String>,
+        qq: Option<String>,
+        time: Option<String>,
+        seq: Option<String>,
     },
 
     /// 合并转发
@@ -183,7 +181,7 @@ pub enum Message {
         /// 发送者昵称   
         nickname: Option<String>,
         /// 消息内容     
-        content: Option<Vec<Message>>,
+        content: Option<MessageChain>,
     },
 
     /// XML 消息
@@ -220,18 +218,17 @@ macro_rules! message_builder {
 }
 
 impl Message {
-    // pub fn text(text: &str) -> Message {
-    //     Message::Text {
-    //         text: text.to_string(),
-    //     }
-    // }
-    message_builder!(text, Text, text: String);
+    pub fn text<T: AsRef<str>>(text: T) -> Message {
+        Message::Text {
+            text: text.as_ref().to_string(),
+        }
+    }
     message_builder!(face, Face, id: String);
     message_builder!(
         image,
         Image,
         file: String,
-        type_: Option<String>,
+        ty: Option<String>,
         url: Option<String>,
         cache: Option<u8>,
         proxy: Option<u8>,
@@ -251,16 +248,21 @@ impl Message {
         video,
         Video,
         file: String,
-        url: Option<String>,
-        cache: Option<u8>,
-        proxy: Option<u8>,
-        timeout: Option<i64>
+        cover: String,
+        c: Option<u8>
     );
-    message_builder!(at, At, qq: String);
+
+    pub fn at(qq: String) -> Message {
+        Message::At {
+            qq,
+            name: None,
+        }
+    }
+    message_builder!(at_name, At, qq: String,name:Option<String>);
     message_builder!(rps, Rps);
     message_builder!(dice, Dice);
     message_builder!(shake, Shake);
-    message_builder!(poke, Poke, type_: String, id: String, name: Option<String>);
+    message_builder!(poke, Poke, qq: String);
     message_builder!(anonymous, Anonymous);
     message_builder!(
         share,
@@ -270,7 +272,7 @@ impl Message {
         content: Option<String>,
         image: Option<String>
     );
-    message_builder!(contact, Contact, type_: String, id: String);
+    message_builder!(contact, Contact, ty: String, id: String);
     message_builder!(
         location,
         Lacation,
@@ -282,7 +284,7 @@ impl Message {
     message_builder!(
         music,
         Music,
-        type_: String,
+        ty: String,
         id: Option<String>,
         url: Option<String>,
         audio: Option<String>,
@@ -290,7 +292,15 @@ impl Message {
         content: Option<String>,
         image: Option<String>
     );
-    message_builder!(reply, Reply, id: String);
+    message_builder!(
+        reply,
+        Reply,
+        id: String,
+        text:Option<String>,
+        qq:Option<String>,
+        time:Option<String>,
+        seq:Option<String>
+    );
     message_builder!(forward, Forward, id: String);
     message_builder!(
         node,
@@ -298,8 +308,97 @@ impl Message {
         id: Option<String>,
         user_id: Option<String>,
         nickname: Option<String>,
-        content: Option<Vec<Message>>
+        content: Option<crate::message::MessageChain>
     );
     message_builder!(xml, Xml, data: String);
     message_builder!(json, Json, data: String);
+}
+
+
+pub struct MessageChainBuilder {
+    inner: MessageChain,
+}
+macro_rules! message_chain_fn {
+    ($fn_name: ident) => {
+        pub fn $fn_name(&mut self,) -> &mut MessageChainBuilder {
+            self.inner.push(Message::$fn_name());
+            self
+        }
+    };
+    ($fn_name: ident, $param: ident: $param_ty: ty) => {
+        pub fn $fn_name(&mut self,$param: $param_ty) -> &mut MessageChainBuilder {
+            self.inner.push(Message::$fn_name($param.to_string()));
+            self
+        }
+    };
+    ($fn_name: ident, $($param: ident: $param_ty: ty),*) => {
+        pub fn $fn_name(&mut self,$($param: $param_ty),*) -> &mut MessageChainBuilder {
+            self.inner.push(Message::$fn_name($($param.to_string()),*));
+            self
+        }
+    };
+}
+pub type MessageChain = Vec<Message>;
+
+impl MessageChainBuilder {
+    pub fn new() -> MessageChainBuilder {
+        MessageChainBuilder {
+            inner: vec![],
+        }
+    }
+    pub fn append(&mut self, message: Message) -> &mut MessageChainBuilder {
+        self.inner.push(message);
+        self
+    }
+    pub fn text<T: AsRef<str>>(&mut self, text: T) -> &mut MessageChainBuilder {
+        self.inner.push(Message::text(text));
+        self
+    }
+    message_chain_fn!(face, id: &str);
+
+
+    pub fn at(&mut self, qq: i64) -> &mut MessageChainBuilder {
+        self.inner.push(Message::at(qq.to_string()));
+        self
+    }
+    pub fn image(&mut self, url: &str) -> &mut MessageChainBuilder {
+        self.inner.push(Message::image(url.to_string(), None, None, None, None, None));
+        self
+    }
+
+    message_chain_fn!(rps);
+    message_chain_fn!(dice);
+    message_chain_fn!(shake);
+
+    pub fn poke(&mut self, qq: i64) -> &mut MessageChainBuilder {
+        self.inner.push(Message::poke(qq.to_string()));
+        self
+    }
+    pub fn reply(&mut self, message_id: i64) -> &mut MessageChainBuilder {
+        self.inner.push(Message::reply(message_id.to_string(), None, None, None, None));
+        self
+    }
+    pub fn reply_custom(&mut self, text: &str, qq: &str, time: i64, seq: i64) -> &mut MessageChainBuilder {
+        self.inner.push(Message::reply("".to_string(), Some(text.to_string()), Some(qq.to_string()), Some(time.to_string()), Some(seq.to_string())));
+        self
+    }
+
+    pub fn forward_node_custom(&mut self,
+                               user_id: i64,
+                               nickname: &str,
+                               content: Vec<Message>) -> &mut MessageChainBuilder {
+        self.inner.push(Message::node(None, Some(user_id.to_string()), Some(nickname.to_string()), Some(content)));
+        self
+    }
+
+    message_chain_fn!(anonymous);
+    message_chain_fn!(contact,ty: &str,id: &str);
+    message_chain_fn!(forward, id: &str);
+
+    message_chain_fn!(xml, data: &str);
+    message_chain_fn!(json,  data: &str);
+
+    pub fn build(&self) -> MessageChain {
+        self.inner.clone()
+    }
 }

@@ -8,16 +8,16 @@ use tracing::{event, Level};
 pub enum Action {
     /// 添加 Bot
     AddBot {
-        bot_id: String,
+        bot_id: i64,
         api_sender: mpsc::Sender<ApiChannelItem>,
         action_sender: crate::ActionSender,
         api_resp_watcher: watch::Receiver<crate::api_resp::ApiResp>,
     },
     /// 移除 Bot
-    RemoveBot { bot_id: String },
+    RemoveBot { bot_id: i64 },
     /// 变更 BotConfig
     ChangeBotConfig {
-        bot_id: String,
+        bot_id: i64,
         bot_config: crate::config::BotConfig,
     },
 }
@@ -34,7 +34,7 @@ impl crate::Nonebot {
                 api_resp_watcher,
             } => {
                 let bot = self.add_bot(
-                    bot_id.clone(),
+                    bot_id,
                     api_sender,
                     action_sender,
                     api_resp_watcher.clone(),
@@ -47,10 +47,10 @@ impl crate::Nonebot {
                 event!(Level::DEBUG, "Add Bot [{}]", bot_id);
             }
             Action::RemoveBot { bot_id } => {
-                let bot = self.remove_bot(bot_id.clone());
+                let bot = self.remove_bot(bot_id);
                 match bot {
                     Some(bot) => {
-                        event!(Level::DEBUG, "Remove Bot [{}]", bot.bot_id.bright_red());
+                        event!(Level::DEBUG, "Remove Bot [{}]", bot.bot_id.to_string().bright_red());
                         self.event_sender
                             .send(crate::event::Event::Nonebot(
                                 crate::event::NbEvent::BotDisconnect { bot },
@@ -61,7 +61,7 @@ impl crate::Nonebot {
                         event!(
                             Level::WARN,
                             "Removing not exists Bot [{}]",
-                            bot_id.bright_red()
+                            bot_id.to_string().bright_red()
                         );
                     }
                 }

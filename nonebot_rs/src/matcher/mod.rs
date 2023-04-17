@@ -90,7 +90,7 @@ where
     /// timeout drop 函数
     fn timeout_drop(&self, _: &Matcher<E>) {}
     /// 匹配函数
-    fn match_(&self, event: &mut E) -> bool;
+    fn match_(&mut self, event: &mut E) -> bool;
     /// 处理函数
     async fn handle(&self, event: E, matcher: Matcher<E>);
     /// Load config
@@ -197,7 +197,7 @@ where
             return false;
         }
         {
-            let handler = self.handler.read().await;
+            let mut handler = self.handler.write().await;
             if !handler.match_(&mut event) {
                 return false;
             }
@@ -252,7 +252,7 @@ where
     .add_rule(crate::builtin::rules::is_user(event.get_user_id()))
     .add_rule(crate::builtin::rules::is_bot(event.get_self_id()));
     if let MessageEvent::Group(g) = event {
-        m.add_rule(crate::builtin::rules::in_group(g.group_id.clone()));
+        m.add_rule(crate::builtin::rules::in_group(g.group_id));
     } else {
         m.add_rule(crate::builtin::rules::is_private_message_event());
     }

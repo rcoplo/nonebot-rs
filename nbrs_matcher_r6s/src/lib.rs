@@ -18,7 +18,7 @@ pub fn r6s() -> Vec<Matcher<MessageEvent>> {
     headers.insert("x-requested-with", "XMLHttpRequest".parse().unwrap());
     let client = Arc::new(utils::R6sClient {
         client: Client::new(),
-        headers: headers,
+        headers,
     });
     vec![
         Matcher::new(

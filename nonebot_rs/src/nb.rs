@@ -6,26 +6,25 @@ impl Nonebot {
     /// 当 WenSocket 收到配置中未配置的 Bot 时，调用该方法新建 Bot 配置信息
     pub fn add_bot(
         &mut self,
-        bot_id: String,
+        bot_id: i64,
         api_sender: mpsc::Sender<ApiChannelItem>,
         action_sender: ActionSender,
         api_resp_watcher: watch::Receiver<ApiResp>,
     ) -> Bot {
         let bot = Bot::new(
-            bot_id.clone(),
-            self.config.gen_bot_config(&bot_id),
+            bot_id,
+            self.config.gen_bot_config(bot_id),
             api_sender,
             action_sender,
             api_resp_watcher,
         );
-        self.bots.insert(bot_id.to_string(), bot.clone());
+        self.bots.insert(bot_id, bot.clone());
         self.bot_sender.send(self.bots.clone()).unwrap();
         bot
     }
 
     /// 移除 Bot，移除成功则返回移除的 Bot
-    pub fn remove_bot(&mut self, bot_id: String) -> Option<Bot> {
-        let bot_id = bot_id.to_string();
+    pub fn remove_bot(&mut self, bot_id: i64) -> Option<Bot> {
         let bot = self.bots.remove(&bot_id);
         self.bot_sender.send(self.bots.clone()).unwrap();
         bot

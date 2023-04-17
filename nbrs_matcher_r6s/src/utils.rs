@@ -8,7 +8,7 @@ use std::path::PathBuf;
 const CACHE_DATE_PATH: &str = "cache";
 const R6S_DIR_NAME: &str = "R6s";
 
-pub type UserNicknameMap = HashMap<String, String>;
+pub type UserNicknameMap = HashMap<i64, String>;
 
 #[derive(Clone)]
 pub struct R6sClient {
@@ -67,7 +67,7 @@ fn check_dir() -> PathBuf {
     r6s_path
 }
 
-pub fn load(bot_id: &str) -> UserNicknameMap {
+pub fn load(bot_id: i64) -> UserNicknameMap {
     let path = check_dir().join(format!("{}.json", bot_id));
     if path.exists() {
         let data = fs::read_to_string(path).unwrap();
@@ -79,7 +79,7 @@ pub fn load(bot_id: &str) -> UserNicknameMap {
     }
 }
 
-pub fn dump(bot_id: &str, data: UserNicknameMap) {
+pub fn dump(bot_id: i64, data: UserNicknameMap) {
     let path = check_dir().join(format!("{}.json", bot_id));
     let data_str = serde_json::to_string(&data).unwrap();
     fs::write(path, &data_str).unwrap();
@@ -90,11 +90,11 @@ pub fn get(event: MessageEvent) -> Option<String> {
     if !msg.is_empty() {
         return Some(msg.to_string());
     }
-    let data = load(&event.get_self_id());
+    let data = load(event.get_self_id());
     data.get(&event.get_user_id()).and_then(|x| Some(x.clone()))
 }
 
-pub fn set(bot_id: &str, user_id: String, nickname: String) {
+pub fn set(bot_id: i64, user_id: i64, nickname: String) {
     let mut data = load(bot_id);
     data.insert(user_id, nickname);
     dump(bot_id, data);

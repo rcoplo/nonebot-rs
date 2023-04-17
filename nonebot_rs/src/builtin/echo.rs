@@ -7,7 +7,7 @@ pub struct Echo {}
 #[doc(hidden)]
 #[async_trait]
 impl Handler<MessageEvent> for Echo {
-    on_command!(MessageEvent, "echo", "Echo");
+    _on_command!(MessageEvent, "echo", "Echo");
     async fn handle(&self, event: MessageEvent, matcher: Matcher<MessageEvent>) {
         let msg = Message::Text {
             text: event.get_raw_message().to_string(),
@@ -32,7 +32,7 @@ pub struct Echo2 {
 #[doc(hidden)]
 #[async_trait]
 impl Handler<MessageEvent> for Echo2 {
-    on_command!(MessageEvent, "echo mode", "Echo Mode");
+    _on_command!(MessageEvent, "echo mode", "Echo Mode");
     async fn handle(&self, _: MessageEvent, matcher: Matcher<MessageEvent>) {
         // echo whatever you say until exit
         let mut max_times = self.max_times;

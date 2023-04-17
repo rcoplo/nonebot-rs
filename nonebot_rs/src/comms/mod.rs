@@ -20,7 +20,7 @@ pub async fn strat_comms(nb: &crate::Nonebot) {
             if !bot_config.ws_server.is_empty() {
                 tokio::spawn(ws::run(
                     bot_config.ws_server.clone(),
-                    bot_id.clone(),
+                    *bot_id,
                     nb.event_sender.clone(),
                     nb.action_sender.clone(),
                     access_token.clone(),

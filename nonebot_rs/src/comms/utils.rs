@@ -15,7 +15,7 @@ pub async fn handler_web_socket(
     action_sender: ActionSender,
     apiresp_watch_sender: tokio::sync::watch::Sender<crate::ApiResp>,
     mut api_receiver: tokio::sync::mpsc::Receiver<crate::ApiChannelItem>,
-    bot_id: String,
+    bot_id: i64,
 ) {
     // 将 websocket 接收流与发送流分离
     let (mut sink, mut stream) = socket.split();
@@ -28,7 +28,7 @@ pub async fn handler_web_socket(
                 &another_event_sender,
                 &action_sender,
                 &apiresp_watch_sender,
-                bot_id.clone(),
+                bot_id,
             )
             .await;
             if let Some(s) = r {
@@ -75,7 +75,7 @@ async fn stream_recv(
     event_sender: &EventSender,
     action_sender: &ActionSender,
     apiresp_watch_sender: &watch::Sender<crate::api_resp::ApiResp>,
-    bot_id: String,
+    bot_id: i64,
 ) -> Option<SplitStream<WebSocketStream<TcpStream>>> {
     let (msg, next_stream) = stream.into_future().await;
     if let Some(msg) = msg {
@@ -102,7 +102,7 @@ async fn stream_recv(
         } else {
             event!(Level::WARN, "Bot [{}] disconnect", bot_id.to_string().red());
             action_sender
-                .send(crate::Action::RemoveBot { bot_id: bot_id })
+                .send(crate::Action::RemoveBot { bot_id })
                 .await
                 .unwrap();
             return None;

@@ -18,10 +18,14 @@ pub fn to_me() -> Arc<PreMatcher<MessageEvent>> {
                         g.raw_message = remove_space(&raw_message[name.len()..]);
                         return true;
                     }
+                    if raw_message.ends_with(&name) {
+                        g.raw_message = remove_space(&raw_message.replace(&name, ""));
+                        return true;
+                    }
                 }
                 for message in &g.message {
                     match message {
-                        Message::At { qq: qq_id } => {
+                        Message::At { qq: qq_id, .. } => {
                             if qq_id == &bot_id {
                                 g.raw_message = remove_space(
                                     &raw_message.replace(&format!("[CQ:at,qq={}]", g.self_id), ""),

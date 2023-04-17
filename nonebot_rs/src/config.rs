@@ -12,7 +12,7 @@ pub struct NbConfig {
     /// 全局配置
     pub global: GlobalConfig,
     /// bot 配置
-    pub bots: Option<HashMap<String, BotConfig>>,
+    pub bots: Option<HashMap<i64, BotConfig>>,
     /// 反向 WS 服务器设置
     pub ws_server: Option<WebSocketServerConfig>,
     #[serde(skip)]
@@ -61,7 +61,7 @@ pub struct GlobalConfig {
 pub struct BotConfig {
     /// bot id
     #[serde(skip)]
-    pub bot_id: String,
+    pub bot_id: i64,
     /// 管理员账号设置
     #[serde(default)]
     pub superusers: Vec<String>,
@@ -82,7 +82,7 @@ pub struct BotConfig {
 impl Default for BotConfig {
     fn default() -> Self {
         BotConfig {
-            bot_id: String::new(),
+            bot_id: 0,
             superusers: vec![],
             nicknames: vec![],
             command_starts: vec![],
@@ -158,9 +158,9 @@ impl NbConfig {
     }
 
     /// 生成 BotConfig
-    pub fn gen_bot_config(&self, bot_id: &str) -> BotConfig {
+    pub fn gen_bot_config(&self, bot_id: i64) -> BotConfig {
         let mut rbotconfig = BotConfig {
-            bot_id: bot_id.to_string(),
+            bot_id,
             superusers: self.global.superusers.clone(),
             nicknames: self.global.nicknames.clone(),
             command_starts: self.global.command_starts.clone(),
@@ -173,7 +173,7 @@ impl NbConfig {
         }
 
         if let Some(bots_config) = &self.bots {
-            if let Some(bot_config) = bots_config.get(bot_id) {
+            if let Some(bot_config) = bots_config.get(&bot_id) {
                 if !bot_config.superusers.is_empty() {
                     rbotconfig.superusers = bot_config.superusers.clone();
                 }
@@ -204,7 +204,7 @@ impl NbConfig {
             for (bot_id, bot) in bots {
                 if !bot.access_token.is_empty() {
                     at.bots
-                        .insert(bot_id.to_string(), bot.access_token.to_string());
+                        .insert(*bot_id, bot.access_token.to_string());
                 }
             }
         }
@@ -215,20 +215,20 @@ impl NbConfig {
 #[derive(Clone)]
 pub struct AccessToken {
     pub global: String,
-    pub bots: HashMap<String, String>,
+    pub bots: HashMap<i64, String>,
 }
 
 impl AccessToken {
-    pub fn get(&self, bot_id: &str) -> &str {
-        if let Some(a) = self.bots.get(bot_id) {
+    pub fn get(&self, bot_id: i64) -> &str {
+        if let Some(a) = self.bots.get(&bot_id) {
             a
         } else {
             &self.global
         }
     }
 
-    pub fn check_auth(&self, bot_id: &str, token: Option<String>) -> bool {
-        let access_token = if let Some(a) = self.bots.get(bot_id) {
+    pub fn check_auth(&self, bot_id: i64, token: Option<String>) -> bool {
+        let access_token = if let Some(a) = self.bots.get(&bot_id) {
             &a
         } else {
             &self.global
@@ -257,7 +257,7 @@ impl AccessToken {
             event!(
                 Level::WARN,
                 "Access Token match fail Bot:[{}] Token:{:?}",
-                bot_id.red(),
+                bot_id.to_string().red(),
                 token
             );
         }
