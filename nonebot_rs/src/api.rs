@@ -393,14 +393,14 @@ impl Api {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SendPrivateMsg {
     pub user_id: i64,
-    pub message: crate::message::MessageChain,
+    pub message: crate::message::MessageVec,
     pub auto_escape: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SendGroupMsg {
     pub group_id: i64,
-    pub message: crate::message::MessageChain,
+    pub message: crate::message::MessageVec,
     pub auto_escape: bool,
 }
 
@@ -409,7 +409,7 @@ pub struct SendMsg {
     pub message_type: Option<String>,
     pub user_id: Option<String>,
     pub group_id: Option<String>,
-    pub message: crate::message::MessageChain,
+    pub message: crate::message::MessageVec,
     pub auto_escape: bool,
 }
 
@@ -612,13 +612,13 @@ pub struct MarkMsgAsRead {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SendGroupForwardMsg {
     pub group_id: i64,
-    pub messages: crate::message::MessageChain,
+    pub messages: crate::message::MessageVec,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct SendPrivateForwardMsg {
     pub user_id: i64,
-    pub messages: crate::message::MessageChain,
+    pub messages: crate::message::MessageVec,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

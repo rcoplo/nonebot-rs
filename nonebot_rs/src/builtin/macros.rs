@@ -9,6 +9,11 @@ macro_rules! on_match_all {
             true
         }
     };
+    ($event_type: ty) => {
+        fn match_(&mut self, _: &mut $event_type) -> bool {
+            true
+        }
+    };
 }
 
 /// 注册命令匹配器
@@ -126,6 +131,20 @@ macro_rules! matcher_request {
        //     )
        //     .await;
 }
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! on_event {
+    ($event_type: ty,$ident: ident,$b:block) => {
+        impl $ident {
+            pub fn new() -> Self {
+                Self {}
+            }
+            pub fn run() -> nonebot_rs::matcher::Matcher<$event_type>{
+                $b
+            }
+        }
+    };
+}
 
 #[allow(unused_macros)]
 #[macro_export]
@@ -140,7 +159,7 @@ macro_rules! on_command {
             #[default]
             None,
             $(
-            $enum_name(nonebot_rs::message::MessageChain,Vec<String>)
+            $enum_name(nonebot_rs::message::MessageVec,Vec<String>)
             ),*
         }
 
@@ -202,48 +221,48 @@ mod test {
     use tracing_subscriber::util::SubscriberInitExt;
     use crate::Message;
 
-    #[derive(Clone)]
-    pub struct TextPlugin {
-        commands: Commands,
-    }
-
-    impl TextPlugin {
-        fn _command(&mut self, event: &mut nonebot_rs::event::MessageEvent) -> bool {
-            let (b, command) = self.commands._command(event);
-            if let Some(c) = command {
-                self.commands = c;
-            }
-            b
-        }
-
-        fn match_(&self, event: &mut nonebot_rs::event::MessageEvent) -> bool {
-            let mut plugin = self.clone();
-            if plugin._command(event) {
-                return true;
-            }
-            false
-        }
-    }
-
-    #[derive(Clone, Default)]
-    pub enum Commands {
-        A(crate::message::MessageChain, Vec<String>)
-    }
-
-
-    impl Commands {
-        fn run(&self) -> nonebot_rs::matcher::Matcher<nonebot_rs::event::MessageEvent> {
-            nonebot_rs::matcher::Matcher::new(stringify!(self), Self {})
-                .add_pre_matcher(nonebot_rs::builtin::prematchers::to_me())
-        }
-        fn _command(&self, event: &mut crate::event::MessageEvent) -> (bool, Option<Commands>) {
-            if event.get_raw_message().starts_with("e") {
-                let new_message = event.get_raw_message().replace("e", "");
-                event.set_raw_message(new_message.clone());
-                let vec = new_message.split_whitespace().map(|x| x.to_string()).collect();
-                return (true, Some(Commands::A(event.get_message_chain(), vec)));
-            }
-            (false, None)
-        }
-    }
+    // #[derive(Clone)]
+    // pub struct TextPlugin {
+    //     commands: Commands,
+    // }
+    //
+    // impl TextPlugin {
+    //     fn _command(&mut self, event: &mut nonebot_rs::event::MessageEvent) -> bool {
+    //         let (b, command) = self.commands._command(event);
+    //         if let Some(c) = command {
+    //             self.commands = c;
+    //         }
+    //         b
+    //     }
+    //
+    //     fn match_(&self, event: &mut nonebot_rs::event::MessageEvent) -> bool {
+    //         let mut plugin = self.clone();
+    //         if plugin._command(event) {
+    //             return true;
+    //         }
+    //         false
+    //     }
+    // }
+    //
+    // #[derive(Clone, Default)]
+    // pub enum Commands {
+    //     A(crate::message::MessageVec, Vec<String>)
+    // }
+    //
+    //
+    // impl Commands {
+    //     fn run(&self) -> nonebot_rs::matcher::Matcher<nonebot_rs::event::MessageEvent> {
+    //         nonebot_rs::matcher::Matcher::new(stringify!(self), Self {})
+    //             .add_pre_matcher(nonebot_rs::builtin::prematchers::to_me())
+    //     }
+    //     fn _command(&self, event: &mut crate::event::MessageEvent) -> (bool, Option<Commands>) {
+    //         if event.get_raw_message().starts_with("e") {
+    //             let new_message = event.get_raw_message().replace("e", "");
+    //             event.set_raw_message(new_message.clone());
+    //             let vec = new_message.split_whitespace().map(|x| x.to_string()).collect();
+    //             return (true, Some(Commands::A(event.get_message_chain(), vec)));
+    //         }
+    //         (false, None)
+    //     }
+    // }
 }

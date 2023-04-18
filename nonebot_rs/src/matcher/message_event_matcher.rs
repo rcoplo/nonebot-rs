@@ -1,5 +1,5 @@
 use super::{build_temp_message_event_matcher, Handler, Matcher};
-use crate::event::MessageEvent;
+use crate::event::{MessageEvent, Role, UserId};
 use crate::ApiChannelItem;
 use async_trait::async_trait;
 use colored::*;
@@ -7,23 +7,23 @@ use tracing::{event, Level};
 
 impl Matcher<MessageEvent> {
     /// 发送纯文本消息
-    pub async fn send_text(&self, msg: &str) -> Option<crate::api_resp::MessageId> {
+    pub async fn send_text_(&self, msg: &str) -> Option<crate::api_resp::MessageId> {
         let msg = crate::message::Message::Text {
             text: msg.to_string(),
         };
         self.send(vec![msg]).await
     }
     /// 直接发送纯文本消息
-    pub async fn send_text_nrv(&self, msg: &str) {
+    pub async fn send_text(&self, msg: &str) {
         let msg = crate::message::Message::Text {
             text: msg.to_string(),
         };
-        self.send_nrv(vec![msg]).await;
+        self.send_(vec![msg]).await;
     }
     /// 直接发送带回复的纯文本消息
-    pub async fn reply_text_nrv(&self, msg: &str) {
+    pub async fn reply_text(&self, msg: &str) {
         if let Some(message_id) = self._reply_text(msg).await {
-            self.send_nrv(vec![
+            self.send_(vec![
                 crate::message::Message::Reply {
                     id: message_id,
                     text: None,
@@ -36,9 +36,9 @@ impl Matcher<MessageEvent> {
         }
     }
     /// 直接发送带At的纯文本消息
-    pub async fn at_text_nrv(&self, msg: &str) {
+    pub async fn at_text(&self, msg: &str) {
         if let Some(message_id) = self._at_text(msg).await {
-            self.send_nrv(vec![
+            self.send_(vec![
                 crate::message::Message::Reply {
                     id: message_id,
                     text: None,
@@ -51,7 +51,7 @@ impl Matcher<MessageEvent> {
         }
     }
     /// 发送带回复纯文本消息
-    pub async fn reply_text(&self, msg: &str) -> Option<crate::api_resp::MessageId> {
+    pub async fn reply_text_(&self, msg: &str) -> Option<crate::api_resp::MessageId> {
         if let Some(message_id) = self._reply_text(msg).await {
             return self.send(vec![
                 crate::message::Message::Reply {
@@ -81,7 +81,7 @@ impl Matcher<MessageEvent> {
         None
     }
     /// 发送带At纯文本消息
-    pub async fn at_text(&self, msg: &str) -> Option<crate::api_resp::MessageId> {
+    pub async fn at_text_(&self, msg: &str) -> Option<crate::api_resp::MessageId> {
         if let Some(message_id) = self._at_text(msg).await {
             return self.send(vec![
                 crate::message::Message::Reply {
@@ -215,9 +215,9 @@ impl Matcher<MessageEvent> {
     }
 
     /// 发送 Vec<Message> 消息 带 message_id
-    pub async fn send(&self, msg: crate::message::MessageChain) -> Option<crate::api_resp::MessageId> {
+    pub async fn send(&self, msg: crate::message::MessageVec) -> Option<crate::api_resp::MessageId> {
         if let (Some(bot), Some(event)) = (&self.bot, &self.event) {
-            bot.send_by_message_event(&event, msg).await
+            bot.send_by_message_event_(&event, msg).await
         } else {
             event!(
                 Level::ERROR,
@@ -229,9 +229,9 @@ impl Matcher<MessageEvent> {
     }
 
     /// 发送 Vec<Message> 消息 直接 发送,不带返回值
-    pub async fn send_nrv(&self, msg: crate::message::MessageChain) {
+    pub async fn send_(&self, msg: crate::message::MessageVec) {
         if let (Some(bot), Some(event)) = (&self.bot, &self.event) {
-            bot.send_by_message_event_nrv(&event, msg).await;
+            bot.send_by_message_event(&event, msg).await;
         } else {
             event!(
                 Level::ERROR,
@@ -239,5 +239,47 @@ impl Matcher<MessageEvent> {
                 "Sending msg with unbuilt matcher!".red()
             );
         }
+    }
+    /// 是否是管理员或群主 私聊则返回false
+    pub async fn is_admin(&self) -> bool {
+        if let (Some(bot), Some(event)) = (&self.bot, &self.event) {
+            if !bot.config.superusers.is_empty() {
+                let user_id = event.get_user_id().to_string();
+                for x in &bot.config.superusers {
+                    if x.eq(&user_id) {
+                        return true;
+                    }
+                }
+            }
+            let (user_id, group_id) = match event {
+                MessageEvent::Private(_) => {
+                    return false;
+                },
+                MessageEvent::Group(g) => {
+                    (g.user_id, g.group_id)
+                }
+            };
+            match bot.get_group_member_list(group_id).await {
+                None => return false,
+                Some(v) => {
+                    for x in v {
+                        if x.user_id.eq(&user_id) {
+                            return match x.role {
+                                Role::Owner => true,
+                                Role::Admin => true,
+                                Role::Member => false,
+                            }
+                        }
+                    }
+                }
+            };
+        } else {
+            event!(
+                Level::ERROR,
+                "{}",
+                "admin acquisition failed!".red()
+            );
+        }
+        false
     }
 }

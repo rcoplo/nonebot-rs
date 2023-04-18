@@ -1,6 +1,6 @@
-use futures_util::SinkExt;
-use crate::message::{Message, MessageChain};
+use crate::message::{Message, MessageVec};
 use serde::{Deserialize, Serialize};
+
 
 /// WebSocket 接受数据枚举 Event || ApiResp
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -91,7 +91,7 @@ impl MessageEvent {
 
     /// 消息事件数组格式消息
     #[allow(dead_code)]
-    pub fn get_message_chain(&self) -> MessageChain {
+    pub fn get_message_chain(&self) -> MessageVec {
         match self {
             MessageEvent::Private(p) => p.message.clone(),
             MessageEvent::Group(g) => g.message.clone(),
@@ -138,7 +138,7 @@ pub struct PrivateMessageEvent {
     /// 发送者 ID
     pub user_id: i64,
     /// Array 消息内容
-    pub message: MessageChain,
+    pub message: MessageVec,
     /// 原生消息内容
     pub raw_message: String,
     /// 字体
@@ -178,7 +178,7 @@ pub struct GroupMessageEvent {
     /// 匿名消息 非匿名消息为空
     pub anonymous: Option<Anoymous>,
     /// Array 消息内容
-    pub message: MessageChain,
+    pub message: MessageVec,
     /// 原生消息内容
     pub raw_message: String,
     /// 字体
@@ -197,7 +197,7 @@ pub struct GroupSender {
     /// 群名片|备注
     pub card: String,
     /// 性别 male|female|unkown
-    pub sex: String,
+    pub sex: Sex,
     /// 年龄
     pub age: i32,
     /// 地区
@@ -205,9 +205,37 @@ pub struct GroupSender {
     /// 成员等级
     pub level: String,
     /// 角色 owner|admin|member
-    pub role: String,
+    pub role: Role,
     /// 专属头衔
     pub title: String,
+}
+
+/// 角色
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum Role {
+    /// 群主
+    #[serde(rename = "owner")]
+    Owner,
+    /// 管理员
+    #[serde(rename = "admin")]
+    Admin,
+    /// 群成员
+    #[serde(rename = "member")]
+    Member,
+}
+
+/// 性别
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum Sex {
+    /// 男
+    #[serde(rename = "male")]
+    Male,
+    /// 女
+    #[serde(rename = "female")]
+    Female,
+    /// 未知
+    #[serde(rename = "unknown")]
+    Unknown,
 }
 
 /// 消息事件匿名字段
@@ -229,10 +257,10 @@ pub struct NoticeEvent {
     /// 收到事件的机器人 QQ 号
     pub self_id: i64,
     /// 上报类型
-    pub notice_type: String,
+    pub notice_type: NoticeType,
     /// 事件子类型
-    pub sub_type: Option<String>,
-
+    pub sub_type: Option<NoticeSubType>,
+    /// 群号
     #[serde(default)]
     pub group_id: Option<i64>,
     /// 操作者 QQ 号
@@ -247,10 +275,117 @@ pub struct NoticeEvent {
     /// 被撤回的消息 ID
     pub message_id: Option<i64>,
     /// 目标 QQ 号
-    #[serde(default)]
     pub target_id: Option<i64>,
-    /// 群荣耀类型
-    pub honor_type: Option<String>,
+    /// 荣誉类型 talkative:龙王|performer:群聊之火|emotion:快乐源泉
+    pub honor_type: Option<HonorType>,
+}
+
+/// 通知类型
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum NoticeType {
+    /// 群文件上传
+    #[serde(rename = "group_upload")]
+    GroupUpload,
+    /// 群管理员变更
+    #[serde(rename = "group_admin")]
+    GroupAdmin,
+    /// 群成员减少
+    #[serde(rename = "group_decrease")]
+    GroupDecrease,
+    /// 群成员增加
+    #[serde(rename = "group_increase")]
+    GroupIncrease,
+    /// 群成员禁言
+    #[serde(rename = "group_ban")]
+    GroupBan,
+    /// 好友添加
+    #[serde(rename = "friend_add")]
+    FriendAdd,
+    /// 群消息撤回
+    #[serde(rename = "group_recall")]
+    GroupRecall,
+    /// 好友消息撤回
+    #[serde(rename = "friend_recall")]
+    FriendRecall,
+    /// 群名片变更
+    #[serde(rename = "group_card")]
+    GroupCard,
+    /// 离线文件上传
+    #[serde(rename = "offline_file")]
+    OfflineFile,
+    /// 客户端状态变更
+    #[serde(rename = "client_status")]
+    ClientStatus,
+    /// 精华消息
+    #[serde(rename = "essence")]
+    Essence,
+    /// 系统通知
+    #[serde(rename = "notify")]
+    Notify,
+
+}
+
+/// 通知子类型
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum NoticeSubType {
+    /// 群荣誉变更
+    #[serde(rename = "honor")]
+    Honor,
+    /// 戳一戳
+    #[serde(rename = "poke")]
+    Poke,
+    /// 群红包幸运王
+    #[serde(rename = "lucky_king")]
+    LuckyKing,
+    /// 群成员头衔变更
+    #[serde(rename = "title")]
+    Title,
+    /// 管理员已同意入群
+    #[serde(rename = "approve")]
+    Approve,
+    /// 管理员邀请入群
+    #[serde(rename = "invite")]
+    Invite,
+    /// 管理员邀请入群
+    #[serde(rename = "leave")]
+    Leave,
+    /// 管理员邀请入群
+    #[serde(rename = "kick")]
+    Kick,
+    /// 管理员邀请入群
+    #[serde(rename = "kick_me")]
+    KickMe,
+    /// 设置和取消管理员
+    #[serde(rename = "set")]
+    Set,
+    #[serde(rename = "unset")]
+    Unset,
+    /// 表示禁言、解除禁言
+    #[serde(rename = "ban")]
+    Ban,
+    #[serde(rename = "lift_ban")]
+    LiftBan,
+    /// 精华消息变更
+    #[serde(rename = "add")]
+    EssenceAdd,
+    #[serde(rename = "delete")]
+    EssenceDelete,
+
+}
+
+/// 通知子类型
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum HonorType {
+    /// 龙王
+    #[serde(rename = "talkative")]
+    Talkative,
+    /// 群聊之火
+    #[serde(rename = "performer")]
+    Performer,
+    /// 快乐源泉
+    #[serde(rename = "emotion")]
+    Emotion,
+
 }
 
 /// 通知事件文件字段
@@ -274,7 +409,7 @@ pub struct RequestEvent {
     /// 收到事件的机器人 QQ 号
     pub self_id: i64,
     /// 请求类型
-    pub request_type: String,
+    pub request_type: RequestType,
     /// 发送请求的 QQ 号
     pub user_id: i64,
     /// 验证信息
@@ -282,10 +417,32 @@ pub struct RequestEvent {
     /// 请求 flag
     pub flag: String,
     /// 请求子类型
-    pub sub_type: Option<String>,
+    pub sub_type: Option<RequestSubType>,
     /// 群号
     #[serde(default)]
     pub group_id: Option<i64>,
+}
+
+/// 请求类型
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum RequestType {
+    /// 好友请求
+    #[serde(rename = "friend")]
+    Friend,
+    /// 群请求
+    #[serde(rename = "group")]
+    Group,
+}
+
+/// 请求子类型
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum RequestSubType {
+    /// 加群请求
+    #[serde(rename = "add")]
+    Add,
+    /// 邀请登录号入群
+    #[serde(rename = "invite")]
+    Invite,
 }
 
 /// 元事件

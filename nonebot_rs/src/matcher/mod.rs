@@ -190,6 +190,7 @@ where
         if self.disable {
             return false;
         }
+
         if !self.pre_matcher_handle(&mut event, config.clone()) {
             return false;
         }

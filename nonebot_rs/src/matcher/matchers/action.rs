@@ -129,10 +129,24 @@ impl Matchers {
         Matchers::add_matcher(&mut self.notice, matcher, self.action_sender.clone());
         self
     }
+    /// 向 Matchers 添加 Vec<Matcher<NoticeEvent>>
+    pub fn add_notice_matchers(&mut self, matchers: Vec<Matcher<NoticeEvent>>) -> &mut Self {
+        for m in matchers {
+            self.add_notice_matcher(m);
+        }
+        self
+    }
 
     /// 向 Matchers 添加 Matcher<RequestEvent>
     pub fn add_request_matcher(&mut self, matcher: Matcher<RequestEvent>) -> &mut Self {
         Matchers::add_matcher(&mut self.request, matcher, self.action_sender.clone());
+        self
+    }
+    /// 向 Matchers 添加 Vec<Matcher<RequestEvent>>
+    pub fn add_request_matchers(&mut self, matchers: Vec<Matcher<RequestEvent>>) -> &mut Self {
+        for m in matchers {
+            self.add_request_matcher(m);
+        }
         self
     }
 

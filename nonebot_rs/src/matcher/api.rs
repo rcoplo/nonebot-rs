@@ -242,21 +242,21 @@ where
         message_type: Option<String>,
         user_id: Option<String>,
         group_id: Option<String>,
-        message: crate::message::MessageChain,
+        message: crate::message::MessageVec,
         auto_escape: bool
     );
     resp_api!(
         send_group_msg,
         api_resp::MessageId,
         group_id: i64,
-        message: crate::message::MessageChain,
+        message: crate::message::MessageVec,
         auto_escape: bool
     );
     resp_api!(
         send_private_msg,
         api_resp::MessageId,
         user_id: i64,
-        message: crate::message::MessageChain,
+        message: crate::message::MessageVec,
         auto_escape: bool
     );
     resp_api!(get_msg, api_resp::Message, message_id: i32);
@@ -344,12 +344,12 @@ where
     resp_api!(send_group_forward_msg,
         api_resp::ForwardMsgId,
         group_id: i64,
-        messages: crate::message::MessageChain
+        messages: crate::message::MessageVec
     );
     resp_api!(send_private_forward_msg,
         api_resp::ForwardMsgId,
         user_id: i64,
-        messages: crate::message::MessageChain
+        messages: crate::message::MessageVec
     );
     resp_api!(get_group_msg_history,
         api_resp::GroupMsgHistory,

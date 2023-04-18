@@ -238,7 +238,7 @@ impl super::Bot {
         message_type: Option<String>,
         user_id: Option<String>,
         group_id: Option<String>,
-        message: crate::message::MessageChain,
+        message: crate::message::MessageVec,
         auto_escape: bool
     );
     resp_api!(
@@ -247,7 +247,7 @@ impl super::Bot {
         MessageId,
         api_resp::MessageId,
         group_id: i64,
-        message: crate::message::MessageChain,
+        message: crate::message::MessageVec,
         auto_escape: bool
     );
     resp_api!(
@@ -256,7 +256,7 @@ impl super::Bot {
         MessageId,
         api_resp::MessageId,
         user_id: i64,
-        message: crate::message::MessageChain,
+        message: crate::message::MessageVec,
         auto_escape: bool
     );
     resp_api!(get_msg, GetMsg, Message, api_resp::Message, message_id: i32);
@@ -359,14 +359,14 @@ impl super::Bot {
         ForwardMsgId,
         api_resp::ForwardMsgId,
         group_id: i64,
-        messages: crate::message::MessageChain
+        messages: crate::message::MessageVec
     );
     resp_api!(send_private_forward_msg,
         SendPrivateForwardMsg,
         ForwardMsgId,
         api_resp::ForwardMsgId,
         user_id: i64,
-        messages: crate::message::MessageChain
+        messages: crate::message::MessageVec
     );
     resp_api!(get_group_msg_history,
         GetGroupMsgHistory,

@@ -181,7 +181,7 @@ pub enum Message {
         /// 发送者昵称   
         nickname: Option<String>,
         /// 消息内容     
-        content: Option<MessageChain>,
+        content: Option<MessageVec>,
     },
 
     /// XML 消息
@@ -197,6 +197,8 @@ pub enum Message {
         /// 合并转发 ID
         data: String,
     },
+    #[serde(skip)]
+    None,
 }
 
 macro_rules! message_builder {
@@ -308,60 +310,60 @@ impl Message {
         id: Option<String>,
         user_id: Option<String>,
         nickname: Option<String>,
-        content: Option<crate::message::MessageChain>
+        content: Option<crate::message::MessageVec>
     );
     message_builder!(xml, Xml, data: String);
     message_builder!(json, Json, data: String);
 }
 
 
-pub struct MessageChainBuilder {
-    inner: MessageChain,
+pub struct MessageChain {
+    inner: MessageVec,
 }
 macro_rules! message_chain_fn {
     ($fn_name: ident) => {
-        pub fn $fn_name(&mut self,) -> &mut MessageChainBuilder {
+        pub fn $fn_name(&mut self,) -> &mut MessageChain {
             self.inner.push(Message::$fn_name());
             self
         }
     };
     ($fn_name: ident, $param: ident: $param_ty: ty) => {
-        pub fn $fn_name(&mut self,$param: $param_ty) -> &mut MessageChainBuilder {
+        pub fn $fn_name(&mut self,$param: $param_ty) -> &mut MessageChain {
             self.inner.push(Message::$fn_name($param.to_string()));
             self
         }
     };
     ($fn_name: ident, $($param: ident: $param_ty: ty),*) => {
-        pub fn $fn_name(&mut self,$($param: $param_ty),*) -> &mut MessageChainBuilder {
+        pub fn $fn_name(&mut self,$($param: $param_ty),*) -> &mut MessageChain {
             self.inner.push(Message::$fn_name($($param.to_string()),*));
             self
         }
     };
 }
-pub type MessageChain = Vec<Message>;
+pub type MessageVec = Vec<Message>;
 
-impl MessageChainBuilder {
-    pub fn new() -> MessageChainBuilder {
-        MessageChainBuilder {
+impl MessageChain {
+    pub fn new() -> MessageChain {
+        MessageChain {
             inner: vec![],
         }
     }
-    pub fn append(&mut self, message: Message) -> &mut MessageChainBuilder {
+    pub fn append(&mut self, message: Message) -> &mut MessageChain {
         self.inner.push(message);
         self
     }
-    pub fn text<T: AsRef<str>>(&mut self, text: T) -> &mut MessageChainBuilder {
+    pub fn text<T: AsRef<str>>(&mut self, text: T) -> &mut MessageChain {
         self.inner.push(Message::text(text));
         self
     }
     message_chain_fn!(face, id: &str);
 
 
-    pub fn at(&mut self, qq: i64) -> &mut MessageChainBuilder {
+    pub fn at(&mut self, qq: i64) -> &mut MessageChain {
         self.inner.push(Message::at(qq.to_string()));
         self
     }
-    pub fn image(&mut self, url: &str) -> &mut MessageChainBuilder {
+    pub fn image(&mut self, url: &str) -> &mut MessageChain {
         self.inner.push(Message::image(url.to_string(), None, None, None, None, None));
         self
     }
@@ -370,15 +372,15 @@ impl MessageChainBuilder {
     message_chain_fn!(dice);
     message_chain_fn!(shake);
 
-    pub fn poke(&mut self, qq: i64) -> &mut MessageChainBuilder {
+    pub fn poke(&mut self, qq: i64) -> &mut MessageChain {
         self.inner.push(Message::poke(qq.to_string()));
         self
     }
-    pub fn reply(&mut self, message_id: i64) -> &mut MessageChainBuilder {
+    pub fn reply(&mut self, message_id: i64) -> &mut MessageChain {
         self.inner.push(Message::reply(message_id.to_string(), None, None, None, None));
         self
     }
-    pub fn reply_custom(&mut self, text: &str, qq: &str, time: i64, seq: i64) -> &mut MessageChainBuilder {
+    pub fn reply_custom(&mut self, text: &str, qq: &str, time: i64, seq: i64) -> &mut MessageChain {
         self.inner.push(Message::reply("".to_string(), Some(text.to_string()), Some(qq.to_string()), Some(time.to_string()), Some(seq.to_string())));
         self
     }
@@ -386,7 +388,7 @@ impl MessageChainBuilder {
     pub fn forward_node_custom(&mut self,
                                user_id: i64,
                                nickname: &str,
-                               content: Vec<Message>) -> &mut MessageChainBuilder {
+                               content: Vec<Message>) -> &mut MessageChain {
         self.inner.push(Message::node(None, Some(user_id.to_string()), Some(nickname.to_string()), Some(content)));
         self
     }
@@ -398,7 +400,7 @@ impl MessageChainBuilder {
     message_chain_fn!(xml, data: &str);
     message_chain_fn!(json,  data: &str);
 
-    pub fn build(&self) -> MessageChain {
+    pub fn build(&self) -> MessageVec {
         self.inner.clone()
     }
 }

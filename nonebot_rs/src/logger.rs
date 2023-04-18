@@ -1,4 +1,4 @@
-use crate::event::{Event, MessageEvent, MetaEvent};
+use crate::event::{Event, MessageEvent, MetaEvent, NoticeEvent, RequestEvent};
 use async_trait::async_trait;
 use colored::*;
 use tracing::{event, Level};
@@ -46,6 +46,31 @@ pub fn meta_logger(event: &MetaEvent) {
     }
 }
 
+pub fn notify_logger(event: &NoticeEvent) {
+    event!(
+        Level::INFO,
+        " {} [{}] {} -> {:?} from ({})",
+        event.group_id.unwrap_or(0).to_string().magenta(),
+        event.self_id.to_string().red(),
+        "NoticeEvent".cyan(),
+        event,
+        event.user_id.to_string().green(),
+    )
+}
+
+pub fn request_logger(event: &RequestEvent) {
+    event!(
+        Level::INFO,
+        " {} [{}] {} -> {:?} from ({})",
+        event.group_id.unwrap_or(0).to_string().magenta(),
+        event.self_id.to_string().red(),
+        "RequestEvent".cyan(),
+        event,
+        event.user_id.to_string().green(),
+    )
+}
+
+
 #[derive(Debug, Clone)]
 pub struct Logger;
 
@@ -55,6 +80,8 @@ impl Logger {
             match &event {
                 Event::Message(m) => message_logger(m),
                 Event::Meta(m) => meta_logger(m),
+                Event::Notice(m) => notify_logger(m),
+                Event::Request(m) => request_logger(m),
                 _ => {}
             }
         }

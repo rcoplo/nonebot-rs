@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 
+
 /// Onebot Api 响应根结构体
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ApiResp {
@@ -73,13 +74,13 @@ pub struct Message {
     pub message_id: i32,
     pub real_id: i32,
     pub sender: Sender,
-    pub message: crate::message::MessageChain,
+    pub message: crate::message::MessageVec,
 }
 
 /// get_forward_msg 响应数据
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Messages {
-    pub message: crate::message::MessageChain,
+    pub message: crate::message::MessageVec,
 }
 
 /// get_login_info 响应数据
@@ -94,7 +95,7 @@ pub struct LoginInfo {
 pub struct StrangerInfo {
     pub user_id: i64,
     pub nickname: String,
-    pub sex: String,
+    pub sex: crate::event::Sex,
     pub age: i32,
 }
 
@@ -114,13 +115,13 @@ pub struct GroupMemberInfo {
     pub user_id: i64,
     pub nickname: String,
     pub card: String,
-    pub sex: String,
+    pub sex: crate::event::Sex,
     pub age: i32,
     pub area: String,
     pub join_time: i32,
     pub last_sent_time: i32,
     pub level: String,
-    pub role: String,
+    pub role: crate::event::Role,
     pub unfriendly: bool,
     pub title: String,
     pub title_expire_time: i32,
@@ -202,12 +203,12 @@ pub struct GroupMember {
     pub user_id: i64,
     pub nickname: String,
     pub card: String,
-    pub sex: String,
+    pub sex: crate::event::Sex,
     pub age: i32,
     pub join_time: i32,
     pub last_sent_time: i32,
     pub level: String,
-    pub role: String,
+    pub role: crate::event::Role,
     pub unfriendly: bool,
     pub card_changeable: bool,
 }
@@ -273,7 +274,7 @@ pub struct UnidirectionalFriendList {
 /// send_group_forward_msg/send_private_forward_msg 响应数据
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GroupMsgHistory {
-    pub messages: crate::message::MessageChain,
+    pub messages: crate::message::MessageVec,
 }
 
 /// send_group_forward_msg/send_private_forward_msg 响应数据
