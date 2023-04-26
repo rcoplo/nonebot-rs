@@ -278,8 +278,18 @@ pub struct NoticeEvent {
     pub target_id: Option<i64>,
     /// 荣誉类型 talkative:龙王|performer:群聊之火|emotion:快乐源泉
     pub honor_type: Option<HonorType>,
+    #[serde(default)]
+    pub online: Option<bool>,
+    #[serde(default)]
+    pub client: Option<BotClient>,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BotClient {
+    pub app_id: i64,
+    pub device_kind: String,
+    pub device_name: String,
+}
 /// 通知类型
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum NoticeType {
