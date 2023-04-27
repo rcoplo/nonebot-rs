@@ -7,7 +7,7 @@ struct Status {
 
 #[async_trait]
 impl Handler<MessageEvent> for Status {
-    crate::_on_command!(MessageEvent, "status");
+    _on_command!(MessageEvent, "_status");
     async fn handle(&self, event: MessageEvent, matcher: Matcher<MessageEvent>) {
         matcher
             .send_text(&build_status(&event, &matcher).await)

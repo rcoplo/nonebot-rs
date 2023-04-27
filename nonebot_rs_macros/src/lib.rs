@@ -1,0 +1,303 @@
+use proc_macro::TokenStream;
+
+use crate::bot_command::{parse_bot_args, parse_bot_command, ParamsMather, ParamsMatherTuple};
+use proc_macro2::Span;
+use proc_macro_error::{abort, proc_macro_error};
+use quote::{quote, ToTokens, TokenStreamExt};
+use syn::parse::{Parse, ParseStream};
+use syn::punctuated::Punctuated;
+use syn::spanned::Spanned;
+use syn::{parse_macro_input, Expr, FnArg, Meta, NestedMeta, Token};
+
+use crate::event_arg::*;
+
+mod bot_command;
+mod event_arg;
+
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn event(args: TokenStream, input: TokenStream) -> TokenStream {
+    // 获取#[event]的参数
+    let attrs = parse_macro_input!(args as syn::AttributeArgs);
+    // 获取方法
+    let method = parse_macro_input!(input as syn::ItemFn);
+    // 解析参数
+    let (all, bot_command) = parse_args_and_command(&method, attrs);
+    let command_items = parse_bot_command(&method, bot_command);
+    // 判断是否为async方法
+    if method.sig.asyncness.is_none() {
+        abort!(&method.sig.span(), "必须是async方法");
+    }
+    // 判断事件
+    let sig_params = &method.sig.inputs;
+    if sig_params.is_empty() {
+        abort!(&sig_params.span(), "需要事件作为参数");
+    }
+    let params: Vec<_> = sig_params.iter().collect();
+    let ((event_param, matcher_param), param_skip) = {
+        let first_param = params.first().expect("第一个参数获取失败");
+        let matcher_param = params.get(1).expect("第二个参数获取失败(1)");
+        if let (FnArg::Receiver(_), FnArg::Receiver(_)) = (first_param, matcher_param) {
+            if params.len() == 2 {
+                abort!(&first_param.span(), "需要事件,匹配器作为参数");
+            }
+            ((*params.get(1).expect("第一个参数获取失败"), *params.get(2).expect("第二个参数获取失败(2)")), 3)
+        } else {
+            ((*first_param, *matcher_param), 2)
+        }
+    };
+    // 对事件进行匹配
+    let event_param = match event_param {
+        FnArg::Receiver(_) => abort!(&event_param.span(), "不支持self"),
+        FnArg::Typed(pt) => pt,
+    };
+    let matcher_param = match matcher_param {
+        FnArg::Receiver(_) => abort!(&matcher_param.span(), "不支持self"),
+        FnArg::Typed(pt) => pt,
+    };
+
+    let event_param_pat = event_param.pat.as_ref();
+    let event_param_ty = event_param.ty.as_ref();
+    let matcher_param_pat = matcher_param.pat.as_ref();
+    let matcher_param_ty = matcher_param.ty.as_ref();
+    let event_param_ty = quote! {#event_param_ty};
+    let matcher_param_ty = quote! {#matcher_param_ty};
+    let event_tokens = match event_param_ty.to_string().as_str() {
+        "Event" => (
+            quote! {::nonebot_rs::event::Event},
+        ),
+        "MessageEvent" => (
+            quote! {::nonebot_rs::event::MessageEvent},
+        ),
+        "PrivateMessageEvent" => (
+            quote! {::nonebot_rs::event::PrivateMessageEvent},
+        ),
+        "GroupMessageEvent" => (
+            quote! {::nonebot_rs::event::GroupMessageEvent},
+        ),
+        "NoticeEvent" => (
+            quote! {::nonebot_rs::event::NoticeEvent},
+        ),
+        "RequestEvent" => (
+            quote! {::nonebot_rs::event::RequestEvent},
+        )
+        ,
+        "MetaEvent" => (
+            quote! {::nonebot_rs::event::MetaEvent},
+        ),
+        "NbEvent" => (
+            quote! {::nonebot_rs::event::NbEvent},
+        ),
+        t => abort!(
+            event_param.span(),
+            format!("未知的参数类型 {}, 事件必须作为&self下一个参数(或第一个参数), ", t),
+        ),
+    };
+
+    match matcher_param_ty.to_string().as_str() {
+        "Matcher < Event >" => (
+            quote! {::nonebot_rs::matcher::Matcher<Event>},
+        ),
+        "Matcher < MessageEvent >" => (
+            quote! {::nonebot_rs::matcher::Matcher<MessageEvent>},
+        ),
+        "Matcher < PrivateMessageEvent >" => (
+            quote! {::nonebot_rs::matcher::Matcher<PrivateMessageEvent>},
+        ),
+        "Matcher < GroupMessageEvent >" => (
+            quote! {::nonebot_rs::matcher::Matcher<GroupMessageEvent>},
+        ),
+        "Matcher < NoticeEvent >" => (
+            quote! {::nonebot_rs::matcher::Matcher<NoticeEvent>},
+        ),
+        "Matcher < RequestEvent >" => (
+            quote! {::nonebot_rs::matcher::Matcher<RequestEvent>},
+        )
+        ,
+        "Matcher < MetaEvent >" => (
+            quote! {::nonebot_rs::matcher::Matcher<MetaEvent>},
+        ),
+        "Matcher < NbEvent >" => (
+            quote! {::nonebot_rs::matcher::Matcher<NbEvent>},
+        ),
+        t => abort!(
+            event_param.span(),
+            format!("未知的参数类型 {}, 匹配器必须作为&self,事件下一个参数,", t),
+        ),
+    };
+    let pms = parse_bot_args(&method, &params[param_skip..params.len()], command_items);
+    let event_trait_name = event_tokens.0;
+    // 生成代码
+    // gen token stream
+    let ident = &method.sig.ident;
+
+    // gen trait
+    let block = &method.block;
+    let build = if all.is_empty() & pms.is_none() {
+        quote! {
+            #[allow(non_camel_case_types)]
+            pub struct #ident {}
+            #[::nonebot_rs::async_trait]
+            impl ::nonebot_rs::matcher::Handler<#event_trait_name> for #ident {
+                fn match_(&mut self, _: &mut #event_trait_name) -> bool {
+                    true
+                }
+                async fn handle(&self, #event_param_pat: #event_param_ty,#matcher_param_pat: #matcher_param_ty) #block
+            }
+        }
+    } else {
+        match event_param_ty.to_string().as_str() {
+            "MessageEvent" => (),
+            "GroupMessageEvent" => (),
+            "PrivateMessageEvent" => (),
+            _ => abort!(
+                &method.sig.span(),
+                "event 的参数只支持消息类型事件 [MessageEvent,PrivateMessageEvent,GroupMessageEvent]"
+            ),
+        }
+        let args_vec = args_to_token(all);
+
+        if pms.is_none() {
+            quote! {
+                #[allow(non_camel_case_types)]
+                pub struct #ident {}
+                #[::nonebot_rs::async_trait]
+                impl ::nonebot_rs::matcher::Handler<#event_trait_name> for #ident {
+                    fn match_(&mut self, event: &mut #event_trait_name) -> bool {
+                        if !::nonebot_rs::matcher::match_event_args_all(#args_vec, event.into()){
+                            return false;
+                        }
+                        let mut matcher = ::nonebot_rs::matcher::CommandMatcher::new(event.get_message_chain());
+                        if matcher.not_blank(){
+                            return false;
+                        }
+                        true
+                    }
+                    async fn handle(&self, #event_param_pat: #event_param_ty,#matcher_param_pat: #matcher_param_ty) {
+                         self.raw(#event_param_pat,#matcher_param_pat).await;
+                    }
+                }
+                impl #ident {
+                    async fn raw(&self, #event_param_pat: #event_param_ty,#matcher_param_pat: #matcher_param_ty) #block
+                }
+            }
+        } else {
+            let mut p_pats = quote! {};
+            let mut command_params_in_raw = quote! {};
+            let mut gets = quote! {};
+            for x in pms.expect("匹配出错") {
+                match x {
+                    ParamsMather::Command(command) => {
+                        gets.append_all(quote! {
+                            if !matcher.match_command(#command) {
+                                return false;
+                            }
+                        });
+                    }
+                    ParamsMather::Params(pat, ty) => {
+                        p_pats.append_all(quote! {
+                           self.#pat.clone(),
+                        });
+                        command_params_in_raw.append_all(quote! {
+                           #pat: #ty,
+                        });
+
+                        gets.append_all(quote! {
+                            let #pat: #ty = match ::nonebot_rs::matcher::matcher_get::<#ty>(&mut matcher) {
+                                Some(value) => value,
+                                None => return false,
+                            };
+                            self.#pat = #pat;
+                        });
+                    }
+                    ParamsMather::Multiple(multiple) => {
+                        let mut mme = quote! {};
+                        let mut pp = vec![];
+                        for x in &multiple {
+                            match x {
+                                ParamsMatherTuple::Command(name) => {
+                                    mme.append_all(quote! {
+                                        ::nonebot_rs::matcher::TupleMatcherElement::Command(#name),
+                                    });
+                                }
+                                ParamsMatherTuple::Params(p, t) => {
+                                    mme.append_all(quote! {
+                                        ::nonebot_rs::matcher::TupleMatcherElement::Param,
+                                    });
+                                    pp.push((*p, *t));
+                                }
+                            }
+                        }
+                        gets.append_all(quote! {
+                            let mut ps = if let Some(ps) = matcher.tuple_matcher(vec![#mme]) {
+                                ps
+                            } else {
+                                return false;
+                            };
+                            ps.reverse();
+                        });
+                        let len = pp.len();
+                        gets.append_all(quote! {
+                            if ps.len() != #len {
+                                return false;
+                            }
+                        });
+                        for (pat, ty) in pp {
+                            p_pats.append_all(quote! {
+                              self.#pat.clone(),
+                            });
+                            command_params_in_raw.append_all(quote! {
+                                #pat: #ty,
+                            });
+                            gets.append_all(quote! {
+                                    let #pat: #ty = if let Some(np) = ps.pop() {
+                                        let sub_matcher = ::nonebot_rs::matcher::TupleMatcher::new(np);
+                                        match ::nonebot_rs::matcher::tuple_matcher_get::<#ty>(sub_matcher) {
+                                            Some(value) => value,
+                                            None => return false,
+                                        }
+                                    } else {
+                                        return false;
+                                    };
+                                    self.#pat = #pat;
+                            });
+                        }
+                    }
+                }
+            }
+
+            quote! {
+                #[allow(non_camel_case_types)]
+                #[derive(Default)]
+                pub struct #ident {
+                    #command_params_in_raw
+                }
+
+                #[::nonebot_rs::async_trait]
+                impl ::nonebot_rs::matcher::Handler<#event_trait_name> for #ident {
+                    fn match_(&mut self, event: &mut #event_trait_name) -> bool {
+                        if !::nonebot_rs::matcher::match_event_args_all(#args_vec, event.into()){
+                            return false;
+                        }
+                        let mut matcher = ::nonebot_rs::matcher::CommandMatcher::new(event.get_message_chain());
+                        #gets
+                        if matcher.not_blank(){
+                            return false;
+                        }
+                        true
+                    }
+                    async fn handle(&self, #event_param_pat: #event_param_ty,#matcher_param_pat: #matcher_param_ty) {
+
+                        self.raw(#event_param_pat,#matcher_param_pat,#p_pats).await;
+                    }
+
+                }
+                impl #ident {
+                    async fn raw(&self, #event_param_pat: #event_param_ty,#matcher_param_pat: #matcher_param_ty, #command_params_in_raw) #block
+                }
+            }
+        }
+    };
+
+    build.into()
+}

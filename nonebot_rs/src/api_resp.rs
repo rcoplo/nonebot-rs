@@ -74,13 +74,13 @@ pub struct Message {
     pub message_id: i32,
     pub real_id: i32,
     pub sender: Sender,
-    pub message: crate::message::MessageVec,
+    pub message: crate::message::MessageChain,
 }
 
 /// get_forward_msg 响应数据
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Messages {
-    pub message: crate::message::MessageVec,
+    pub message: crate::message::MessageChain,
 }
 
 /// get_login_info 响应数据
@@ -274,7 +274,7 @@ pub struct UnidirectionalFriendList {
 /// send_group_forward_msg/send_private_forward_msg 响应数据
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GroupMsgHistory {
-    pub messages: crate::message::MessageVec,
+    pub messages: crate::message::MessageChain,
 }
 
 /// send_group_forward_msg/send_private_forward_msg 响应数据

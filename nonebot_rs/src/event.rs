@@ -1,4 +1,4 @@
-use crate::message::{Message, MessageVec};
+use crate::message::{Message, MessageChain};
 use serde::{Deserialize, Serialize};
 
 
@@ -91,7 +91,7 @@ impl MessageEvent {
 
     /// 消息事件数组格式消息
     #[allow(dead_code)]
-    pub fn get_message_chain(&self) -> MessageVec {
+    pub fn get_message_chain(&self) -> MessageChain {
         match self {
             MessageEvent::Private(p) => p.message.clone(),
             MessageEvent::Group(g) => g.message.clone(),
@@ -132,13 +132,13 @@ pub struct PrivateMessageEvent {
     /// 收到事件的机器人 QQ 号
     pub self_id: i64,
     /// 消息子类型
-    pub sub_type: String,
+    pub sub_type: PrivateSubType,
     /// 消息 ID
     pub message_id: i32,
     /// 发送者 ID
     pub user_id: i64,
     /// Array 消息内容
-    pub message: MessageVec,
+    pub message: MessageChain,
     /// 原生消息内容
     pub raw_message: String,
     /// 字体
@@ -147,6 +147,27 @@ pub struct PrivateMessageEvent {
     pub sender: PrivateSender,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum PrivateSubType {
+    /// 好友
+    #[serde(rename = "friend")]
+    Friend,
+    /// 群聊
+    #[serde(rename = "normal")]
+    Normal,
+    /// 匿名
+    #[serde(rename = "anonymous")]
+    Anonymous,
+    /// 群中自身发送
+    #[serde(rename = "group_self")]
+    GroupSelf,
+    /// 群临时会话
+    #[serde(rename = "group	")]
+    Group,
+    /// 系统提示
+    #[serde(rename = "notice")]
+    Notice,
+}
 /// 私聊消息事件发送者
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct PrivateSender {
@@ -168,7 +189,7 @@ pub struct GroupMessageEvent {
     /// 收到事件的机器人 QQ 号
     pub self_id: i64,
     /// 消息子类型
-    pub sub_type: String,
+    pub sub_type: GroupSubType,
     /// 消息 ID
     pub message_id: i32,
     /// 群消息群号
@@ -178,7 +199,7 @@ pub struct GroupMessageEvent {
     /// 匿名消息 非匿名消息为空
     pub anonymous: Option<Anoymous>,
     /// Array 消息内容
-    pub message: MessageVec,
+    pub message: MessageChain,
     /// 原生消息内容
     pub raw_message: String,
     /// 字体
@@ -187,6 +208,18 @@ pub struct GroupMessageEvent {
     pub sender: GroupSender,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum GroupSubType {
+    /// 群聊
+    #[serde(rename = "normal")]
+    Normal,
+    /// 匿名
+    #[serde(rename = "anonymous")]
+    Anonymous,
+    /// 系统提示
+    #[serde(rename = "notice")]
+    Notice,
+}
 /// 群消息事件发送者
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GroupSender {
@@ -267,6 +300,7 @@ pub struct NoticeEvent {
     #[serde(default)]
     pub operator_id: Option<i64>,
     /// 发送者 ID
+    #[serde(default)]
     pub user_id: i64,
     /// 文件信息
     pub file: Option<File>,
@@ -278,10 +312,13 @@ pub struct NoticeEvent {
     pub target_id: Option<i64>,
     /// 荣誉类型 talkative:龙王|performer:群聊之火|emotion:快乐源泉
     pub honor_type: Option<HonorType>,
-    #[serde(default)]
-    pub online: Option<bool>,
+
     #[serde(default)]
     pub client: Option<BotClient>,
+
+    #[serde(default)]
+    pub online: Option<bool>,
+
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

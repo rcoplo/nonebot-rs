@@ -197,7 +197,19 @@ pub mod plugin;
 #[cfg_attr(docsrs, doc(cfg(feature = "scheduler")))]
 pub mod scheduler;
 mod utils;
+pub mod cq_code;
 
+pub use nonebot_rs_macros::{
+    event
+};
+#[macro_export]
+macro_rules! matcher {
+    ($e:ident,$b:block) => {
+        pub fn matcher() -> ::nonebot_rs::matcher::Matcher<$e>{
+            $b
+        }
+    };
+}
 use std::collections::HashMap;
 use tokio::sync::{broadcast, mpsc, watch};
 

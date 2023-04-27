@@ -43,7 +43,7 @@ impl Bot {
     }
 
     /// Send Group Msg
-    pub async fn send_group_msg_nrv(&self, group_id: i64, msg: crate::message::MessageVec) {
+    pub async fn send_group_msg_nrv(&self, group_id: i64, msg: crate::message::MessageChain) {
         self.api_sender
             .send(ApiChannelItem::Api(crate::api::Api::send_group_msg(
                 crate::api::SendGroupMsg {
@@ -65,7 +65,7 @@ impl Bot {
     }
 
     /// Send Private Msg
-    pub async fn send_private_msg_nrv(&self, user_id: i64, msg: crate::message::MessageVec) {
+    pub async fn send_private_msg_nrv(&self, user_id: i64, msg: crate::message::MessageChain) {
         self.api_sender
             .send(ApiChannelItem::Api(crate::api::Api::send_private_msg(
                 crate::api::SendPrivateMsg {
@@ -87,14 +87,14 @@ impl Bot {
     }
 
     /// 根据 MessageEvent 类型发送私聊消息或群消息
-    pub async fn send_by_message_event_(&self, event: &MessageEvent, msg: crate::message::MessageVec) -> Option<crate::api_resp::MessageId> {
+    pub async fn send_by_message_event_(&self, event: &MessageEvent, msg: crate::message::MessageChain) -> Option<crate::api_resp::MessageId> {
         match event {
             MessageEvent::Private(p) => self.send_private_msg(p.user_id, msg, false).await,
             MessageEvent::Group(g) => self.send_group_msg(g.group_id, msg, false).await,
         }
     }
     /// 根据 MessageEvent 类型发送私聊消息或群消息 不带返回值
-    pub async fn send_by_message_event(&self, event: &MessageEvent, msg: crate::message::MessageVec) {
+    pub async fn send_by_message_event(&self, event: &MessageEvent, msg: crate::message::MessageChain) {
         match event {
             MessageEvent::Private(p) => self.send_private_msg_nrv(p.user_id, msg).await,
             MessageEvent::Group(g) => self.send_group_msg_nrv(g.group_id, msg).await,
