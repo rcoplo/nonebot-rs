@@ -144,9 +144,10 @@ impl Matcher<MessageEvent> {
                 tokio::spawn(async move { sender.send(ApiChannelItem::TimeOut).await.unwrap() });
             }
 
-            fn match_(&mut self, event: &mut MessageEvent) -> bool {
+            fn match_(&mut self, _: &mut MessageEvent) -> bool {
                 true
             }
+
             async fn handle(&self, event: MessageEvent, matcher: Matcher<MessageEvent>) {
                 matcher
                     .bot
