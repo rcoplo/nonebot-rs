@@ -168,71 +168,81 @@
 
 mod action;
 /// Onebot Api
-pub mod api;
+mod api;
 /// Onebot Api Response
-pub mod api_resp;
+mod api_resp;
 mod bot;
-/// 内建组件
-pub mod builtin;
+
 #[doc(hidden)]
-pub mod comms;
+mod comms;
 /// nbrs 设置项
-pub mod config;
+mod config;
 /// Onebot 事件
-pub mod event;
+mod event;
 /// logger
-pub mod log;
+mod log;
 mod logger;
 /// Matchers Plugin
-#[cfg(feature = "matcher")]
-#[cfg_attr(docsrs, doc(cfg(feature = "matcher")))]
-pub mod matcher;
+mod matcher;
 #[doc(hidden)]
-pub mod message;
+mod message;
 mod nb;
 #[doc(hidden)]
-pub mod plugin;
+mod plugin;
 /// scheduler Plugin
-#[cfg(feature = "scheduler")]
-#[cfg_attr(docsrs, doc(cfg(feature = "scheduler")))]
-pub mod scheduler;
-mod utils;
-pub mod cq_code;
 
-pub use nonebot_rs_macros::{
-    event
-};
-#[macro_export]
-macro_rules! matcher {
-    ($e:ident,$b:block) => {
-        pub fn matcher() -> ::nonebot_rs::matcher::Matcher<$e>{
-            $b
-        }
+mod scheduler;
+mod utils;
+mod cq_code;
+
+pub use async_trait::async_trait;
+
+pub mod prelude {
+    pub use crate::cq_code::*;
+    #[cfg(feature = "scheduler")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "scheduler")))]
+    pub use crate::scheduler::*;
+
+    pub use nonebot_rs_macros::{
+        event
     };
+
+    #[cfg(feature = "matcher")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "matcher")))]
+    pub use crate::matcher::*;
+
+    pub use log::{
+        event as log_event, Level,
+    };
+    #[cfg(feature = "tokio")]
+    #[cfg_attr(docsrs, doc(cfg(feature = "matcher")))]
+    pub use tokio::*;
+    pub use crate::{
+        event::*,
+        message::*,
+        nb::*,
+        config::*,
+        utils::timestamp,
+        bot::Bot,
+    };
+    use crate::log;
 }
+
 use std::collections::HashMap;
 use tokio::sync::{broadcast, mpsc, watch};
 
 #[doc(inline)]
-pub use action::Action;
+use action::Action;
 #[doc(inline)]
-pub use api_resp::{ApiResp, RespData};
-pub use async_trait::async_trait;
+use api_resp::{ApiResp, RespData};
 #[doc(inline)]
-pub use bot::Bot;
-#[doc(inline)]
-#[doc(inline)]
-pub use message::Message;
-#[doc(inline)]
-pub use plugin::Plugin;
+use bot::Bot;
 
-#[cfg(feature = "scheduler")]
-#[cfg_attr(docsrs, doc(cfg(feature = "scheduler")))]
-pub use scheduler::Scheduler;
+#[doc(inline)]
+use message::Message;
+#[doc(inline)]
+use plugin::Plugin;
 
-#[cfg(feature = "matcher")]
-#[cfg_attr(docsrs, doc(cfg(feature = "matcher")))]
-pub use matcher::matchers::Matchers;
 
 /// Onebot Api mpsc channel Bot 发送 WebSocket 接收
 pub type ApiSender = mpsc::Sender<ApiChannelItem>;

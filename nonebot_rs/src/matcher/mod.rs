@@ -17,10 +17,33 @@ pub mod api;
 pub mod matchers;
 #[doc(hidden)]
 pub mod message_event_matcher;
-/// Preludo for Matcher
-pub mod prelude;
+
 #[doc(hidden)]
 pub mod set_get;
+/// 内建 rules
+#[cfg(feature = "matcher")]
+#[cfg_attr(docsrs, doc(cfg(feature = "matcher")))]
+pub mod rules;
+#[cfg(feature = "matcher")]
+#[cfg_attr(docsrs, doc(cfg(feature = "matcher")))]
+pub mod prematchers;
+
+#[macro_export]
+macro_rules! matcher {
+    ($e:ident,$b:block) => {
+        pub fn matcher() -> ::nonebot_rs::prelude::Matcher<$e>{
+            $b
+        }
+    };
+}
+#[macro_export]
+macro_rules! matcher_vec {
+    ($e:ident,$b:block) => {
+        pub fn matcher() -> Vec<::nonebot_rs::prelude::Matcher<$e>>{
+            $b
+        }
+    };
+}
 
 /// rule 函数类型
 pub type Rule<E> = Arc<dyn Fn(&E, &BotConfig) -> bool + Send + Sync>;
@@ -254,12 +277,12 @@ where
         ),
         handler,
     )
-    .add_rule(crate::builtin::rules::is_user(event.get_user_id()))
-    .add_rule(crate::builtin::rules::is_bot(event.get_self_id()));
+        .add_rule(crate::matcher::rules::is_user(event.get_user_id()))
+        .add_rule(crate::matcher::rules::is_bot(event.get_self_id()));
     if let MessageEvent::Group(g) = event {
-        m.add_rule(crate::builtin::rules::in_group(g.group_id));
+        m.add_rule(crate::matcher::rules::in_group(g.group_id));
     } else {
-        m.add_rule(crate::builtin::rules::is_private_message_event());
+        m.add_rule(crate::matcher::rules::is_private_message_event());
     }
     m.set_priority(0)
         .set_temp(true)
@@ -911,7 +934,7 @@ fn message_to_cq(m: Message) -> CqCode {
             CqCode::Location(Location { lat, lon, title, content })
         }
         Message::Music { ty, id, url, audio, title, content, image } => {
-            CqCode::Music(Music { ty, id: id.unwrap_or_default() })
+            CqCode::Music(Music { ty, id: id.unwrap_or_default(), audio, title, content, image })
         }
         Message::Reply { id, text, qq, time, seq } => {
             CqCode::Reply(Reply { id, text, qq, time, seq })

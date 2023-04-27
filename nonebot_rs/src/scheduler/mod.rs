@@ -32,6 +32,7 @@ impl std::fmt::Debug for Scheduler {
 pub struct SchedulerConfig {
     #[serde(default)]
     disable: bool,
+    #[warn(dead_code)]
     #[serde(flatten)]
     jobs: HashMap<String, JobConfig>,
 }
@@ -39,6 +40,7 @@ pub struct SchedulerConfig {
 /// Config for each Job
 #[derive(Debug, Clone, serde::Deserialize)]
 pub struct JobConfig {
+    #[warn(dead_code)]
     #[serde(flatten)]
     custom: HashMap<String, toml::Value>,
 }

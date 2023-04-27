@@ -1298,11 +1298,11 @@ dependencies = [
     "cfg-if",
     "indoc",
     "libc",
- "parking_lot",
- "paste",
- "pyo3-build-config",
- "pyo3-macros",
- "unindent",
+    "parking_lot",
+    "paste",
+    "pyo3-build-config",
+    "pyo3-macros",
+    "unindent",
 ]
 
 [[package]]

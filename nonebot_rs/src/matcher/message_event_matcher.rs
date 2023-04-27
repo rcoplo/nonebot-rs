@@ -22,7 +22,7 @@ impl Matcher<MessageEvent> {
     }
     /// 直接发送带回复的纯文本消息
     pub async fn reply_text(&self, msg: &str) {
-        if let Some(message_id) = self._reply_text(msg).await {
+        if let Some(message_id) = self._reply_text().await {
             self.send_(vec![
                 crate::message::Message::Reply {
                     id: message_id,
@@ -37,7 +37,7 @@ impl Matcher<MessageEvent> {
     }
     /// 直接发送带At的纯文本消息
     pub async fn at_text(&self, msg: &str) {
-        if let Some(user_id) = self._at_text(msg).await {
+        if let Some(user_id) = self._at_text().await {
             self.send_(vec![
                 crate::message::Message::At {
                     qq: user_id.to_string(),
@@ -49,7 +49,7 @@ impl Matcher<MessageEvent> {
     }
     /// 发送带回复纯文本消息
     pub async fn reply_text_(&self, msg: &str) -> Option<crate::api_resp::MessageId> {
-        if let Some(message_id) = self._reply_text(msg).await {
+        if let Some(message_id) = self._reply_text().await {
             return self.send(vec![
                 crate::message::Message::Reply {
                     id: message_id,
@@ -63,7 +63,8 @@ impl Matcher<MessageEvent> {
         }
         None
     }
-    async fn _reply_text(&self, msg: &str) -> Option<i32> {
+
+    async fn _reply_text(&self) -> Option<i32> {
         if let Some(event) = &self.event {
             let message_id = match event {
                 MessageEvent::Private(p) => {
@@ -79,7 +80,7 @@ impl Matcher<MessageEvent> {
     }
     /// 发送带At纯文本消息
     pub async fn at_text_(&self, msg: &str) -> Option<crate::api_resp::MessageId> {
-        if let Some(user_id) = self._at_text(msg).await {
+        if let Some(user_id) = self._at_text().await {
             return self.send(vec![
                 crate::message::Message::At {
                     qq: user_id.to_string(),
@@ -90,7 +91,7 @@ impl Matcher<MessageEvent> {
         }
         None
     }
-    async fn _at_text(&self, msg: &str) -> Option<i64> {
+    async fn _at_text(&self) -> Option<i64> {
         if let Some(event) = &self.event {
             let user_id = match event {
                 MessageEvent::Private(p) => {
@@ -137,7 +138,15 @@ impl Matcher<MessageEvent> {
 
         #[async_trait]
         impl Handler<MessageEvent> for Temp {
-            crate::on_match_all!();
+            // timeout 后调用，通知接受端 Timeout
+            fn timeout_drop(&self, matcher: &Matcher<MessageEvent>) {
+                let sender = matcher.bot.clone().unwrap().api_sender;
+                tokio::spawn(async move { sender.send(ApiChannelItem::TimeOut).await.unwrap() });
+            }
+
+            fn match_(&mut self, event: &mut MessageEvent) -> bool {
+                true
+            }
             async fn handle(&self, event: MessageEvent, matcher: Matcher<MessageEvent>) {
                 matcher
                     .bot
@@ -147,12 +156,6 @@ impl Matcher<MessageEvent> {
                     .send(ApiChannelItem::MessageEvent(event))
                     .await
                     .unwrap();
-            }
-
-            // timeout 后调用，通知接受端 Timeout
-            fn timeout_drop(&self, matcher: &Matcher<MessageEvent>) {
-                let sender = matcher.bot.clone().unwrap().api_sender;
-                tokio::spawn(async move { sender.send(ApiChannelItem::TimeOut).await.unwrap() });
             }
         }
 

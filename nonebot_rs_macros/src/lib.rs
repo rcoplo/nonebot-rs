@@ -1,19 +1,19 @@
 use proc_macro::TokenStream;
 
 use crate::bot_command::{parse_bot_args, parse_bot_command, ParamsMather, ParamsMatherTuple};
-use proc_macro2::Span;
-use proc_macro_error::{abort, proc_macro_error};
-use quote::{quote, ToTokens, TokenStreamExt};
-use syn::parse::{Parse, ParseStream};
-use syn::punctuated::Punctuated;
-use syn::spanned::Spanned;
-use syn::{parse_macro_input, Expr, FnArg, Meta, NestedMeta, Token};
 
-use crate::event_arg::*;
+use proc_macro_error::{abort, proc_macro_error};
+use quote::{quote, TokenStreamExt};
+use syn::spanned::Spanned;
+use syn::{parse_macro_input, FnArg};
+
 
 mod bot_command;
 mod event_arg;
 
+use crate::event_arg::{
+    parse_args_and_command, args_to_token,
+};
 #[proc_macro_error]
 #[proc_macro_attribute]
 pub fn event(args: TokenStream, input: TokenStream) -> TokenStream {
@@ -64,29 +64,29 @@ pub fn event(args: TokenStream, input: TokenStream) -> TokenStream {
     let matcher_param_ty = quote! {#matcher_param_ty};
     let event_tokens = match event_param_ty.to_string().as_str() {
         "Event" => (
-            quote! {::nonebot_rs::event::Event},
+            quote! {::nonebot_rs::prelude},
         ),
         "MessageEvent" => (
-            quote! {::nonebot_rs::event::MessageEvent},
+            quote! {::nonebot_rs::prelude::MessageEvent},
         ),
         "PrivateMessageEvent" => (
-            quote! {::nonebot_rs::event::PrivateMessageEvent},
+            quote! {::nonebot_rs::prelude::PrivateMessageEvent},
         ),
         "GroupMessageEvent" => (
-            quote! {::nonebot_rs::event::GroupMessageEvent},
+            quote! {::nonebot_rs::prelude::GroupMessageEvent},
         ),
         "NoticeEvent" => (
-            quote! {::nonebot_rs::event::NoticeEvent},
+            quote! {::nonebot_rs::prelude::NoticeEvent},
         ),
         "RequestEvent" => (
-            quote! {::nonebot_rs::event::RequestEvent},
+            quote! {::nonebot_rs::prelude::RequestEvent},
         )
         ,
         "MetaEvent" => (
-            quote! {::nonebot_rs::event::MetaEvent},
+            quote! {::nonebot_rs::prelude::MetaEvent},
         ),
         "NbEvent" => (
-            quote! {::nonebot_rs::event::NbEvent},
+            quote! {::nonebot_rs::prelude::NbEvent},
         ),
         t => abort!(
             event_param.span(),
@@ -96,29 +96,29 @@ pub fn event(args: TokenStream, input: TokenStream) -> TokenStream {
 
     match matcher_param_ty.to_string().as_str() {
         "Matcher < Event >" => (
-            quote! {::nonebot_rs::matcher::Matcher<Event>},
+            quote! {::nonebot_rs::prelude::Matcher<Event>},
         ),
         "Matcher < MessageEvent >" => (
-            quote! {::nonebot_rs::matcher::Matcher<MessageEvent>},
+            quote! {::nonebot_rs::prelude::Matcher<MessageEvent>},
         ),
         "Matcher < PrivateMessageEvent >" => (
-            quote! {::nonebot_rs::matcher::Matcher<PrivateMessageEvent>},
+            quote! {::nonebot_rs::prelude::Matcher<PrivateMessageEvent>},
         ),
         "Matcher < GroupMessageEvent >" => (
-            quote! {::nonebot_rs::matcher::Matcher<GroupMessageEvent>},
+            quote! {::nonebot_rs::prelude::Matcher<GroupMessageEvent>},
         ),
         "Matcher < NoticeEvent >" => (
-            quote! {::nonebot_rs::matcher::Matcher<NoticeEvent>},
+            quote! {::nonebot_rs::prelude::Matcher<NoticeEvent>},
         ),
         "Matcher < RequestEvent >" => (
-            quote! {::nonebot_rs::matcher::Matcher<RequestEvent>},
+            quote! {::nonebot_rs::prelude::Matcher<RequestEvent>},
         )
         ,
         "Matcher < MetaEvent >" => (
-            quote! {::nonebot_rs::matcher::Matcher<MetaEvent>},
+            quote! {::nonebot_rs::prelude::Matcher<MetaEvent>},
         ),
         "Matcher < NbEvent >" => (
-            quote! {::nonebot_rs::matcher::Matcher<NbEvent>},
+            quote! {::nonebot_rs::prelude::Matcher<NbEvent>},
         ),
         t => abort!(
             event_param.span(),
@@ -138,7 +138,7 @@ pub fn event(args: TokenStream, input: TokenStream) -> TokenStream {
             #[allow(non_camel_case_types)]
             pub struct #ident {}
             #[::nonebot_rs::async_trait]
-            impl ::nonebot_rs::matcher::Handler<#event_trait_name> for #ident {
+            impl ::nonebot_rs::prelude::Handler<#event_trait_name> for #ident {
                 fn match_(&mut self, _: &mut #event_trait_name) -> bool {
                     true
                 }
@@ -162,12 +162,12 @@ pub fn event(args: TokenStream, input: TokenStream) -> TokenStream {
                 #[allow(non_camel_case_types)]
                 pub struct #ident {}
                 #[::nonebot_rs::async_trait]
-                impl ::nonebot_rs::matcher::Handler<#event_trait_name> for #ident {
+                impl ::nonebot_rs::prelude::Handler<#event_trait_name> for #ident {
                     fn match_(&mut self, event: &mut #event_trait_name) -> bool {
-                        if !::nonebot_rs::matcher::match_event_args_all(#args_vec, event.into()){
+                        if !::nonebot_rs::prelude::match_event_args_all(#args_vec, event.into()){
                             return false;
                         }
-                        let mut matcher = ::nonebot_rs::matcher::CommandMatcher::new(event.get_message_chain());
+                        let mut matcher = ::nonebot_rs::prelude::CommandMatcher::new(event.get_message_chain());
                         if matcher.not_blank(){
                             return false;
                         }
@@ -203,7 +203,7 @@ pub fn event(args: TokenStream, input: TokenStream) -> TokenStream {
                         });
 
                         gets.append_all(quote! {
-                            let #pat: #ty = match ::nonebot_rs::matcher::matcher_get::<#ty>(&mut matcher) {
+                            let #pat: #ty = match ::nonebot_rs::prelude::matcher_get::<#ty>(&mut matcher) {
                                 Some(value) => value,
                                 None => return false,
                             };
@@ -217,12 +217,12 @@ pub fn event(args: TokenStream, input: TokenStream) -> TokenStream {
                             match x {
                                 ParamsMatherTuple::Command(name) => {
                                     mme.append_all(quote! {
-                                        ::nonebot_rs::matcher::TupleMatcherElement::Command(#name),
+                                        ::nonebot_rs::prelude::TupleMatcherElement::Command(#name),
                                     });
                                 }
                                 ParamsMatherTuple::Params(p, t) => {
                                     mme.append_all(quote! {
-                                        ::nonebot_rs::matcher::TupleMatcherElement::Param,
+                                        ::nonebot_rs::prelude::TupleMatcherElement::Param,
                                     });
                                     pp.push((*p, *t));
                                 }
@@ -251,8 +251,8 @@ pub fn event(args: TokenStream, input: TokenStream) -> TokenStream {
                             });
                             gets.append_all(quote! {
                                     let #pat: #ty = if let Some(np) = ps.pop() {
-                                        let sub_matcher = ::nonebot_rs::matcher::TupleMatcher::new(np);
-                                        match ::nonebot_rs::matcher::tuple_matcher_get::<#ty>(sub_matcher) {
+                                        let sub_matcher = ::nonebot_rs::prelude::TupleMatcher::new(np);
+                                        match ::nonebot_rs::prelude::tuple_matcher_get::<#ty>(sub_matcher) {
                                             Some(value) => value,
                                             None => return false,
                                         }
@@ -274,12 +274,12 @@ pub fn event(args: TokenStream, input: TokenStream) -> TokenStream {
                 }
 
                 #[::nonebot_rs::async_trait]
-                impl ::nonebot_rs::matcher::Handler<#event_trait_name> for #ident {
+                impl ::nonebot_rs::prelude::Handler<#event_trait_name> for #ident {
                     fn match_(&mut self, event: &mut #event_trait_name) -> bool {
-                        if !::nonebot_rs::matcher::match_event_args_all(#args_vec, event.into()){
+                        if !::nonebot_rs::prelude::match_event_args_all(#args_vec, event.into()){
                             return false;
                         }
-                        let mut matcher = ::nonebot_rs::matcher::CommandMatcher::new(event.get_message_chain());
+                        let mut matcher = ::nonebot_rs::prelude::CommandMatcher::new(event.get_message_chain());
                         #gets
                         if matcher.not_blank(){
                             return false;

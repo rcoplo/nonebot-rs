@@ -1,5 +1,5 @@
-use crate::{api_resp, Message};
-use crate::event::{MessageEvent, UserId};
+use crate::api_resp;
+use crate::event::MessageEvent;
 use crate::{api, config, utils, ApiChannelItem, ApiResp};
 use colored::*;
 use tokio::sync::{mpsc, watch};

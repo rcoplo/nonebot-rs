@@ -1,5 +1,4 @@
 use std::fmt::{Display, Formatter};
-use futures_util::TryFutureExt;
 use crate::message::MessageChain;
 
 
@@ -154,38 +153,26 @@ pub struct Location {
 pub struct Music {
     pub ty: String,
     pub id: i64,
-}
-
-impl Display for Music {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[CQ:music,type={},id={}]",
-               self.ty,
-               self.id,
-        )
-    }
-}
-
-/// 音乐自定义分享 发
-#[derive(Default, Clone)]
-pub struct MusicCustom {
-    pub id: i64,
-    pub audio: String,
-    pub title: String,
+    pub audio: Option<String>,
+    pub title: Option<String>,
     pub content: Option<String>,
     pub image: Option<String>,
 }
 
-impl Display for MusicCustom {
+impl Display for Music {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[CQ:music,id={},audio={},title={}{}{}]",
+        write!(f, "[CQ:music,id={}{}{}{}{}]",
                self.id,
-               self.audio,
-               self.title,
+               self.audio.as_ref().map(|audio| format!(",audio={audio}")).unwrap_or_else(|| "".to_owned()),
+               self.title.as_ref().map(|title| format!(",title={title}")).unwrap_or_else(|| "".to_owned()),
                self.content.as_ref().map(|content| format!(",content={content}")).unwrap_or_else(|| "".to_owned()),
                self.image.as_ref().map(|image| format!(",image={image}")).unwrap_or_else(|| "".to_owned()),
         )
     }
 }
+
+
+
 
 /// 图片 收/发
 #[derive(Default, Clone)]

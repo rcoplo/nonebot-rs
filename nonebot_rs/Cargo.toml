@@ -16,6 +16,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 matcher = ["rcnb-rs"]
 scheduler = ["tokio-cron-scheduler"]
+tokio = []
 
 [dependencies]
 tracing-subscriber = "0.3.16"

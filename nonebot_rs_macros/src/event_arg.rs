@@ -1,4 +1,3 @@
-use std::env::args;
 use proc_macro_error::abort;
 use quote::{quote, TokenStreamExt};
 use syn::spanned::Spanned;
@@ -29,6 +28,13 @@ pub(crate) fn parse_args(children: Vec<NestedMeta>) -> Vec<EventArg> {
                     let ident = &list.path.segments.first().unwrap().ident;
                     let ident_name = list.path.segments.first().unwrap().ident.to_string();
                     match ident_name.as_str() {
+                        "all" => {
+                            let mut v = vec![];
+                            for x in list.nested {
+                                v.push(x);
+                            }
+                            children_args.push(EventArg::All(parse_args(v)));
+                        }
                         "not" => {
                             let mut v = vec![];
                             for x in list.nested {

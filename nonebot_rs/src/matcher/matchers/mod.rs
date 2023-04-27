@@ -157,7 +157,7 @@ impl crate::Plugin for Matchers {
     }
 }
 
-fn log_load_matchers(matchers: &crate::Matchers) {
+fn log_load_matchers(matchers: &crate::prelude::matchers::Matchers) {
     log_matcherb(&matchers.message);
     log_matcherb(&matchers.notice);
     log_matcherb(&matchers.request);

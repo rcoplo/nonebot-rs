@@ -1,4 +1,4 @@
-use crate::message::{Message, MessageChain};
+use crate::message::MessageChain;
 use serde::{Deserialize, Serialize};
 
 
