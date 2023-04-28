@@ -110,7 +110,7 @@ impl Matcher<MessageEvent> {
         where
             H: Handler<MessageEvent> + Send + Sync + 'static,
     {
-        self.set_message_matcher(build_temp_message_event_matcher(event, handler))
+        self.set_message_matcher(build_temp_message_event_matcher(30, event, handler))
             .await;
     }
 
@@ -164,7 +164,7 @@ impl Matcher<MessageEvent> {
         let (sender, mut receiver) = tokio::sync::mpsc::channel::<ApiChannelItem>(4);
         let event = self.event.clone().unwrap();
         // 根据提供的 event Handler 构建仅指向当先通话的 Temp Matcher
-        let mut m = build_temp_message_event_matcher(&event, Temp);
+        let mut m = build_temp_message_event_matcher(30, &event, Temp);
         // 使用临时通道构建专用 Bot
         let bot = crate::bot::Bot::new(
             0,
@@ -187,10 +187,10 @@ impl Matcher<MessageEvent> {
             match data {
                 ApiChannelItem::MessageEvent(event) => {
                     let msg = crate::utils::remove_space(event.get_raw_message());
-                    if msg.is_empty() {
-                        return None;
+                    return if msg.is_empty() {
+                        None
                     } else {
-                        return Some(msg);
+                        Some(msg)
                     }
                 }
                 ApiChannelItem::TimeOut => {

@@ -1,5 +1,6 @@
 #![doc(html_favicon_url = "https://v2.nonebot.dev/logo.png")]
 #![doc(html_logo_url = "https://v2.nonebot.dev/logo.png")]
+
 #![cfg_attr(docsrs, feature(doc_cfg))]
 
 //! # Nonebot-rs
@@ -204,7 +205,7 @@ pub mod prelude {
     pub use crate::scheduler::*;
 
     pub use nonebot_rs_macros::{
-        event
+        event, scheduler,
     };
 
     #[cfg(feature = "matcher")]
@@ -291,6 +292,8 @@ pub enum ApiChannelItem {
     Api(api::Api),
     /// Event 用于临时 Matcher 与原 Matcher 传递事件 todo
     MessageEvent(event::MessageEvent),
+    Request(event::RequestEvent),
+    Notice(event::NoticeEvent),
     /// Time out 通知T
     TimeOut,
 }

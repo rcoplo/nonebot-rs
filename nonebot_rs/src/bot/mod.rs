@@ -1,5 +1,5 @@
 use crate::api_resp;
-use crate::event::MessageEvent;
+use crate::event::{Event, MessageEvent, NoticeType, RequestType};
 use crate::{api, config, utils, ApiChannelItem, ApiResp};
 use colored::*;
 use tokio::sync::{mpsc, watch};
@@ -57,7 +57,7 @@ impl Bot {
 
         event!(
             Level::INFO,
-            "Bot [{}] Send {:.100?} to Group ({})",
+            "Bot [{}] Send {:100?} to Group ({})",
             self.config.bot_id.to_string().red(),
             msg,
             group_id.to_string().magenta()
@@ -79,7 +79,7 @@ impl Bot {
 
         event!(
             Level::INFO,
-            "Bot [{}] Send {:.100?} to Friend ({})",
+            "Bot [{}] Send {:100?} to Friend ({})",
             self.config.bot_id.to_string().red(),
             msg,
             user_id.to_string().green()
@@ -98,6 +98,76 @@ impl Bot {
         match event {
             MessageEvent::Private(p) => self.send_private_msg_nrv(p.user_id, msg).await,
             MessageEvent::Group(g) => self.send_group_msg_nrv(g.group_id, msg).await,
+        }
+    }
+
+    pub async fn send_by_event(&self, event: &Event, msg: crate::message::MessageChain) {
+        match event {
+            Event::Message(m) => match m {
+                MessageEvent::Private(p) => self.send_private_msg_nrv(p.user_id, msg).await,
+                MessageEvent::Group(g) => self.send_group_msg_nrv(g.group_id, msg).await,
+            }
+
+            Event::Notice(n) => {
+                match n.notice_type {
+                    NoticeType::GroupUpload => {
+                        self.send_group_msg_nrv(n.group_id.unwrap(), msg).await;
+                    }
+                    NoticeType::GroupAdmin => {
+                        self.send_group_msg_nrv(n.group_id.unwrap(), msg).await;
+                    }
+                    NoticeType::GroupDecrease => {
+                        self.send_group_msg_nrv(n.group_id.unwrap(), msg).await;
+                    }
+                    NoticeType::GroupIncrease => {
+                        self.send_group_msg_nrv(n.group_id.unwrap(), msg).await;
+                    }
+                    NoticeType::GroupBan => {
+                        self.send_group_msg_nrv(n.group_id.unwrap(), msg).await;
+                    }
+                    NoticeType::FriendAdd => {
+                        self.send_private_msg_nrv(n.user_id, msg).await;
+                    }
+                    NoticeType::GroupRecall => {
+                        self.send_group_msg_nrv(n.group_id.unwrap(), msg).await;
+                    }
+                    NoticeType::FriendRecall => {
+                        self.send_private_msg_nrv(n.group_id.unwrap(), msg).await;
+                    }
+                    NoticeType::GroupCard => {
+                        self.send_group_msg_nrv(n.group_id.unwrap(), msg).await;
+                    }
+                    NoticeType::OfflineFile => {
+                        self.send_private_msg_nrv(n.group_id.unwrap(), msg).await;
+                    }
+                    NoticeType::Essence => {
+                        self.send_group_msg_nrv(n.group_id.unwrap(), msg).await;
+                    }
+                    NoticeType::Notify => {
+                        if let Some(group_id) = n.group_id {
+                            self.send_group_msg_nrv(group_id, msg).await;
+                        } else {
+                            self.send_private_msg_nrv(n.user_id, msg).await;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+
+            Event::Request(r) => {
+                // 使用场景很少
+                match r.request_type {
+                    RequestType::Friend => {
+                        self.send_private_msg_nrv(r.user_id, msg).await;
+                    }
+                    RequestType::Group => {
+                        if let Some(group_id) = r.group_id {
+                            self.send_group_msg_nrv(group_id, msg).await;
+                        }
+                    }
+                }
+            }
+            _ => {}
         }
     }
 

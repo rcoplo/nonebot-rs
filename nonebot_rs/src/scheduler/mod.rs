@@ -6,8 +6,8 @@ use std::sync::Arc;
 
 pub trait ScheduledJob {
     /// 定时任务标识
-    fn name(&self) -> &'static str;
-    fn cron(&self) -> &'static str;
+    fn name(&self) -> String;
+    fn cron(&self) -> String;
     fn call(&self, bot: Arc<crate::Bot>) -> std::pin::Pin<Box<dyn std::future::Future<Output=()> + Send + 'static>>;
 }
 
@@ -56,10 +56,16 @@ impl Scheduler {
     }
 
     /// 向定时任务执行器中添加一个定时任务
-    pub async fn add_task(&mut self, job: Box<dyn ScheduledJob + Sync + Send + 'static>) {
-        let job = Arc::new(job);
-        self.jobs.push(job);
+    pub async fn add_task(&mut self, job: Box<impl ScheduledJob + Sync + Send + 'static>) {
+        self.jobs.push(Arc::new(job));
     }
+
+    pub async fn add_tasks(&mut self, jobs: Vec<Box<dyn ScheduledJob + Sync + Send + 'static>>) {
+        for job in jobs {
+            self.jobs.push(Arc::new(job));
+        }
+    }
+
     async fn run(mut self, mut event_receiver: crate::EventReceiver) {
         while let Ok(event) = event_receiver.recv().await {
             match event {
@@ -73,26 +79,25 @@ impl Scheduler {
                                 let _job = job.clone();
                                 crate::log::event!(
                                    crate::log::Level::INFO,
-                                   "Bot [{}] Job creator created -> Job NAME: {}",
-                                   bot.bot_id.to_string().red(),
+                                   "Scheduler {} is Loaded",
                                    _job.name().blue()
                                );
-                                let job = tokio_cron_scheduler::Job::new_async(_job.cron(), move |_, _| {
+                                let job = tokio_cron_scheduler::Job::new_async(_job.cron().as_str(), move |_, _| {
                                     _job.call(bot.clone())
                                 }).unwrap();
                                 vec.push(job.guid());
-                                self.inner.add(job).await.expect("job add failed");
+                                self.inner.add(job).await.expect("Scheduler add failed");
                             }
                             self.bots.insert(arc.bot_id, vec);
                         }
                         crate::event::NbEvent::BotDisconnect { bot } => {
                             if let Some(uuid) = self.bots.get(&bot.bot_id) {
                                 for u in uuid {
-                                    self.inner.remove(u).await.expect("job remove failed");
+                                    self.inner.remove(u).await.expect("Scheduler remove failed");
                                 }
                                 crate::log::event!(
                                    crate::log::Level::INFO,
-                                   "Bot [{}] Job created deleted",
+                                   "Bot [{}] Scheduler created deleted",
                                    bot.bot_id.to_string().red(),
                                );
                                 self.bots.remove(&bot.bot_id);
@@ -111,14 +116,14 @@ impl Scheduler {
 }
 
 pub trait ArcScheduledJob {
-    fn name(&self) -> &'static str;
-    fn cron(&self) -> &'static str;
+    fn name(&self) -> String;
+    fn cron(&self) -> String;
     fn call(self: &Arc<Self>, bot: Arc<crate::Bot>) -> std::pin::Pin<Box<dyn std::future::Future<Output=()> + Send + 'static>>;
 }
 
 impl<T: ArcScheduledJob> ScheduledJob for Arc<T> {
-    fn name(&self) -> &'static str { <T as ArcScheduledJob>::name(&self) }
-    fn cron(&self) -> &'static str {
+    fn name(&self) -> String { <T as ArcScheduledJob>::name(&self) }
+    fn cron(&self) -> String {
         <T as ArcScheduledJob>::cron(&self)
     }
     fn call(&self, bot: Arc<crate::Bot>) -> std::pin::Pin<Box<dyn std::future::Future<Output=()> + Send + 'static>> {

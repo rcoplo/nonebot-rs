@@ -1,5 +1,5 @@
 use crate::config::BotConfig;
-use crate::event::MessageEvent;
+use crate::event::{Event, MessageEvent};
 use crate::event::{SelfId, UserId};
 use crate::matcher::Rule;
 use std::sync::Arc;
@@ -73,4 +73,17 @@ pub fn is_private_message_event() -> Rule<MessageEvent> {
         }
     };
     Arc::new(is_private_message_event)
+}
+
+/// 会话开始指令
+pub fn on_command(msg: String) -> Rule<MessageEvent> {
+    let on_command = move |event: &MessageEvent, _: &BotConfig| -> bool {
+        if let MessageEvent::Group(g) = event {
+            if g.raw_message.eq(&msg) {
+                return true;
+            }
+        }
+        false
+    };
+    Arc::new(on_command)
 }

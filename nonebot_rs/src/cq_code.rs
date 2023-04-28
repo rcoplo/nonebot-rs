@@ -1,9 +1,9 @@
 use std::fmt::{Display, Formatter};
 use crate::message::MessageChain;
 
-
+#[derive(Clone)]
 pub enum CqCode {
-    Text(String),
+    Text(Text),
     Face(Face),
     Record(Record),
     Video(Video),
@@ -25,6 +25,16 @@ pub enum CqCode {
     Node(Node),
     XmlMsg(XmlMsg),
     JsonMsg(JsonMsg),
+}
+
+/// 字符串消息
+#[derive(Default, Clone)]
+pub struct Text(pub String);
+
+impl Display for Text {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.0)
+    }
 }
 
 /// 表情

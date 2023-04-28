@@ -5,7 +5,8 @@ use crate::bot_command::{parse_bot_args, parse_bot_command, ParamsMather, Params
 use proc_macro_error::{abort, proc_macro_error};
 use quote::{quote, TokenStreamExt};
 use syn::spanned::Spanned;
-use syn::{parse_macro_input, FnArg};
+use syn::{parse_macro_input, FnArg, NestedMeta, Meta};
+use syn::Lit::Str;
 
 
 mod bot_command;
@@ -14,6 +15,7 @@ mod event_arg;
 use crate::event_arg::{
     parse_args_and_command, args_to_token,
 };
+
 #[proc_macro_error]
 #[proc_macro_attribute]
 pub fn event(args: TokenStream, input: TokenStream) -> TokenStream {
@@ -64,7 +66,7 @@ pub fn event(args: TokenStream, input: TokenStream) -> TokenStream {
     let matcher_param_ty = quote! {#matcher_param_ty};
     let event_tokens = match event_param_ty.to_string().as_str() {
         "Event" => (
-            quote! {::nonebot_rs::prelude},
+            quote! {::nonebot_rs::prelude::Event},
         ),
         "MessageEvent" => (
             quote! {::nonebot_rs::prelude::MessageEvent},
@@ -287,7 +289,6 @@ pub fn event(args: TokenStream, input: TokenStream) -> TokenStream {
                         true
                     }
                     async fn handle(&self, #event_param_pat: #event_param_ty,#matcher_param_pat: #matcher_param_ty) {
-
                         self.raw(#event_param_pat,#matcher_param_pat,#p_pats).await;
                     }
 
@@ -301,3 +302,94 @@ pub fn event(args: TokenStream, input: TokenStream) -> TokenStream {
 
     build.into()
 }
+
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn scheduler(args: TokenStream, input: TokenStream) -> TokenStream {
+    // 获取#[event]的参数
+    let attrs = parse_macro_input!(args as syn::AttributeArgs);
+    // 获取方法
+    let method = parse_macro_input!(input as syn::ItemFn);
+    // 判断是否为async方法
+    if method.sig.asyncness.is_none() {
+        abort!(&method.sig.span(), "必须是async方法");
+    }
+
+    // 判断事件
+    let sig_params = &method.sig.inputs;
+    if sig_params.is_empty() {
+        abort!(&sig_params.span(), "需要bot作为参数");
+    }
+
+    let bot_params = match sig_params.first() {
+        None => { abort!(&sig_params.span(), "需要bot作为参数"); }
+        Some(bot) => {
+            match bot {
+                FnArg::Receiver(_) => { abort!(&sig_params.span(), "第一个参数不能是self"); }
+                FnArg::Typed(t) => { t }
+            }
+        }
+    };
+    let block = &method.block;
+    let mut cron = String::new();
+    match attrs.first() {
+        None => { abort!(&method.span(), "必须要一个参数") }
+        Some(nm) => {
+            if let NestedMeta::Meta(meta) = nm {
+                if let Meta::NameValue(nv) = meta {
+                    if nv.path.segments.len() != 1 {
+                        abort!(&nv.path.span(), "表达式有且只能有一个片段");
+                    }
+                    let ident = &nv.path.segments.first().unwrap().ident;
+                    let ident_name = nv.path.segments.first().unwrap().ident.to_string();
+                    match ident_name.as_str() {
+                        "cron" => match &nv.lit {
+                            Str(value) => {
+                                cron.push_str(&value.value());
+                            }
+                            _ => abort!(&ident.span(), "cron只支持字符串类型参数值"),
+                        },
+                        _ => abort!(&ident.span(), "不支持的参数名称"),
+                    }
+                }
+            } else {
+                abort!(&nm.span(), "必须要一个参数")
+            }
+        }
+    }
+
+    let ident = method.sig.ident;
+    let name = format!("{}", ident);
+    let bot_params_pat = bot_params.pat.as_ref();
+    let bot_params_ty = bot_params.ty.as_ref();
+    let bot_params_ty_ = quote! {#bot_params_ty};
+    match bot_params_ty_.to_string().as_str() {
+        "Arc < Bot >" => {}
+        _ => { abort!(&bot_params.span(), "必须是Arc<Bot>") }
+    }
+
+    quote!(
+        #[allow(non_camel_case_types)]
+        #[derive(Clone)]
+        pub struct #ident;
+
+        impl ::nonebot_rs::prelude::ScheduledJob for #ident {
+            fn name(&self) -> String {
+                #name.to_string()
+            }
+            fn cron(&self) -> String {
+                #cron.to_string()
+            }
+            fn call(&self, #bot_params_pat: #bot_params_ty) -> std::pin::Pin<Box<dyn std::future::Future<Output=()> + Send + 'static>> {
+                let r = self.clone();
+                Box::pin(async move{
+                        r.raw(#bot_params_pat).await;
+                })
+            }
+        }
+        impl #ident {
+            async fn raw(&self,#bot_params_pat: #bot_params_ty) #block
+        }
+    ).into()
+}
+

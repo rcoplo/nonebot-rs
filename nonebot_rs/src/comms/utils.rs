@@ -63,6 +63,7 @@ pub async fn handler_web_socket(
                         "WedSocket接受端接收到错误TimeOut消息".bright_red()
                     );
                 } // 忽视 event 该 receiver 永不应该收到 event
+                _ => {}
             }
         }
     };

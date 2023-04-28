@@ -35,6 +35,25 @@ pub enum Event {
     Nonebot(NbEvent),
 }
 
+impl Event {
+    /// 消息事件时间戳
+    #[allow(dead_code)]
+    pub fn get_time(&self) -> i64 {
+        match self {
+            Event::Message(m) => match m {
+                MessageEvent::Private(p) => p.time,
+                MessageEvent::Group(g) => g.time,
+            }
+            Event::Notice(n) => n.time,
+            Event::Request(r) => r.time,
+            Event::Meta(m) => m.time,
+            Event::Nonebot(n) => match n {
+                NbEvent::BotConnect { bot } => bot.connect_time,
+                NbEvent::BotDisconnect { bot } => bot.connect_time,
+            }
+        }
+    }
+}
 /// Nonebot Event
 #[derive(Debug, Clone)]
 pub enum NbEvent {
@@ -534,6 +553,22 @@ impl UserId for MessageEvent {
         match self {
             MessageEvent::Private(p) => p.user_id,
             MessageEvent::Group(g) => g.user_id,
+        }
+    }
+}
+
+impl UserId for Event {
+    fn get_user_id(&self) -> i64 {
+        match self {
+            Event::Message(m) => match m {
+                MessageEvent::Private(p) => p.user_id,
+                MessageEvent::Group(g) => g.user_id,
+            }
+            Event::Notice(n) => {
+                n.user_id
+            }
+            Event::Request(r) => r.user_id,
+            _ => 0,
         }
     }
 }

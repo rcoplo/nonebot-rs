@@ -5,6 +5,7 @@ use crate::{Action, Message};
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
+use serde_json::Map;
 use tokio::sync::RwLock;
 use tracing::warn;
 use crate::cq_code::*;
@@ -26,7 +27,7 @@ pub mod set_get;
 pub mod rules;
 #[cfg(feature = "matcher")]
 #[cfg_attr(docsrs, doc(cfg(feature = "matcher")))]
-pub mod prematchers;
+pub mod pre_matchers;
 
 #[macro_export]
 macro_rules! matcher {
@@ -82,7 +83,9 @@ where
     pub timeout: Option<i64>,
 
     #[doc(hidden)]
-    event: Option<E>,
+    pub event: Option<E>,
+
+    pub state: Map<String, serde_json::Value>
 }
 
 #[doc(hidden)]
@@ -163,8 +166,8 @@ where
             disable: false,
             temp: false,
             timeout: None,
-
             event: None,
+            state: Map::new(),
         }
     }
 
@@ -213,6 +216,7 @@ where
                 return false;
             }
         }
+
         if self.disable {
             return false;
         }
@@ -220,15 +224,16 @@ where
         if !self.pre_matcher_handle(&mut event, config.clone()) {
             return false;
         }
+
         if !self.check_rules(&event, &config) {
             return false;
         }
+
         {
             let mut handler = self.handler.write().await;
             if !handler.match_(&mut event) {
                 return false;
             }
-
             let matcher = self.clone().set_event(&event);
             let handler = self.handler.clone();
             tokio::spawn(async move {
@@ -259,8 +264,9 @@ where
     }
 }
 
-/// 构建 timeout 为 30s 的临时 Matcher<MessageEvent>
+/// 构建临时 Matcher<MessageEvent>
 pub fn build_temp_message_event_matcher<H>(
+    time: i32,
     event: &MessageEvent,
     handler: H,
 ) -> Matcher<MessageEvent>
@@ -277,16 +283,17 @@ where
         ),
         handler,
     )
-        .add_rule(crate::matcher::rules::is_user(event.get_user_id()))
-        .add_rule(crate::matcher::rules::is_bot(event.get_self_id()));
+        .add_rule(rules::is_user(event.get_user_id()))
+        .add_rule(rules::is_bot(event.get_self_id()));
     if let MessageEvent::Group(g) = event {
-        m.add_rule(crate::matcher::rules::in_group(g.group_id));
+        m.add_rule(rules::in_group(g.group_id));
     } else {
-        m.add_rule(crate::matcher::rules::is_private_message_event());
+        m.add_rule(rules::is_private_message_event());
     }
+
     m.set_priority(0)
         .set_temp(true)
-        .set_timeout(timestamp() + 30)
+        .set_timeout(timestamp() + time as i64)
 }
 
 #[derive(Clone, Debug)]
@@ -684,6 +691,7 @@ macro_rules! command_rq_element_ty_supplier {
 }
 
 command_rq_element_ty_supplier!(At, CqCode::At);
+command_rq_element_ty_supplier!(Text, CqCode::Text);
 command_rq_element_ty_supplier!(Face, CqCode::Face);
 command_rq_element_ty_supplier!(Reply, CqCode::Reply);
 command_rq_element_ty_supplier!(Share, CqCode::Share);
@@ -873,7 +881,7 @@ tuple_base_ty_supplier!(char);
 fn message_to_cq(m: Message) -> CqCode {
     match m {
         Message::Text { text } => {
-            CqCode::Text(text)
+            CqCode::Text(Text(text))
         }
         Message::Face { id } => {
             CqCode::Face(Face {
