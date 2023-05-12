@@ -1,20 +1,21 @@
-use proc_macro::TokenStream;
+mod bot_command;
+mod event_arg;
+mod utils;
+
+
+use proc_macro::{Ident, TokenStream};
 
 use crate::bot_command::{parse_bot_args, parse_bot_command, ParamsMather, ParamsMatherTuple};
 
 use proc_macro_error::{abort, proc_macro_error};
 use quote::{quote, TokenStreamExt};
 use syn::spanned::Spanned;
-use syn::{parse_macro_input, FnArg, NestedMeta, Meta};
+use syn::{parse_macro_input, FnArg, NestedMeta, Meta, Type, Pat};
+use syn::__private::TokenStream2;
 use syn::Lit::Str;
+use crate::event_arg::{args_to_token, parse_args_and_command};
+use crate::utils::{event_param_match, matcher_param_match, params_command};
 
-
-mod bot_command;
-mod event_arg;
-
-use crate::event_arg::{
-    parse_args_and_command, args_to_token,
-};
 
 #[proc_macro_error]
 #[proc_macro_attribute]
@@ -36,119 +37,50 @@ pub fn event(args: TokenStream, input: TokenStream) -> TokenStream {
         abort!(&sig_params.span(), "需要事件作为参数");
     }
     let params: Vec<_> = sig_params.iter().collect();
-    let ((event_param, matcher_param), param_skip) = {
-        let first_param = params.first().expect("第一个参数获取失败");
-        let matcher_param = params.get(1).expect("第二个参数获取失败(1)");
-        if let (FnArg::Receiver(_), FnArg::Receiver(_)) = (first_param, matcher_param) {
-            if params.len() == 2 {
-                abort!(&first_param.span(), "需要事件,匹配器作为参数");
-            }
-            ((*params.get(1).expect("第一个参数获取失败"), *params.get(2).expect("第二个参数获取失败(2)")), 3)
-        } else {
-            ((*first_param, *matcher_param), 2)
-        }
-    };
-    // 对事件进行匹配
-    let event_param = match event_param {
-        FnArg::Receiver(_) => abort!(&event_param.span(), "不支持self"),
-        FnArg::Typed(pt) => pt,
-    };
-    let matcher_param = match matcher_param {
-        FnArg::Receiver(_) => abort!(&matcher_param.span(), "不支持self"),
-        FnArg::Typed(pt) => pt,
-    };
-
-    let event_param_pat = event_param.pat.as_ref();
-    let event_param_ty = event_param.ty.as_ref();
-    let matcher_param_pat = matcher_param.pat.as_ref();
-    let matcher_param_ty = matcher_param.ty.as_ref();
-    let event_param_ty = quote! {#event_param_ty};
-    let matcher_param_ty = quote! {#matcher_param_ty};
-    let event_tokens = match event_param_ty.to_string().as_str() {
-        "Event" => (
-            quote! {::nonebot_rs::prelude::Event},
-        ),
-        "MessageEvent" => (
-            quote! {::nonebot_rs::prelude::MessageEvent},
-        ),
-        "PrivateMessageEvent" => (
-            quote! {::nonebot_rs::prelude::PrivateMessageEvent},
-        ),
-        "GroupMessageEvent" => (
-            quote! {::nonebot_rs::prelude::GroupMessageEvent},
-        ),
-        "NoticeEvent" => (
-            quote! {::nonebot_rs::prelude::NoticeEvent},
-        ),
-        "RequestEvent" => (
-            quote! {::nonebot_rs::prelude::RequestEvent},
-        )
-        ,
-        "MetaEvent" => (
-            quote! {::nonebot_rs::prelude::MetaEvent},
-        ),
-        "NbEvent" => (
-            quote! {::nonebot_rs::prelude::NbEvent},
-        ),
-        t => abort!(
-            event_param.span(),
-            format!("未知的参数类型 {}, 事件必须作为&self下一个参数(或第一个参数), ", t),
-        ),
-    };
-
-    match matcher_param_ty.to_string().as_str() {
-        "Matcher < Event >" => (
-            quote! {::nonebot_rs::prelude::Matcher<Event>},
-        ),
-        "Matcher < MessageEvent >" => (
-            quote! {::nonebot_rs::prelude::Matcher<MessageEvent>},
-        ),
-        "Matcher < PrivateMessageEvent >" => (
-            quote! {::nonebot_rs::prelude::Matcher<PrivateMessageEvent>},
-        ),
-        "Matcher < GroupMessageEvent >" => (
-            quote! {::nonebot_rs::prelude::Matcher<GroupMessageEvent>},
-        ),
-        "Matcher < NoticeEvent >" => (
-            quote! {::nonebot_rs::prelude::Matcher<NoticeEvent>},
-        ),
-        "Matcher < RequestEvent >" => (
-            quote! {::nonebot_rs::prelude::Matcher<RequestEvent>},
-        )
-        ,
-        "Matcher < MetaEvent >" => (
-            quote! {::nonebot_rs::prelude::Matcher<MetaEvent>},
-        ),
-        "Matcher < NbEvent >" => (
-            quote! {::nonebot_rs::prelude::Matcher<NbEvent>},
-        ),
-        t => abort!(
-            event_param.span(),
-            format!("未知的参数类型 {}, 匹配器必须作为&self,事件下一个参数,", t),
-        ),
-    };
+    // 对状态,事件,匹配器进行匹配
+    let (state_param,
+        (event_param_pat, event_param_ty),
+        (matcher_param_pat, matcher_param_ty),
+        param_skip) = params_command(&params);
+    
     let pms = parse_bot_args(&method, &params[param_skip..params.len()], command_items);
-    let event_trait_name = event_tokens.0;
+    
     // 生成代码
     // gen token stream
     let ident = &method.sig.ident;
-
+    
     // gen trait
     let block = &method.block;
-    let build = if all.is_empty() & pms.is_none() {
+    let build = if all.is_empty() & pms.is_none() & state_param.is_none() {
         quote! {
             #[allow(non_camel_case_types)]
             pub struct #ident {}
             #[::nonebot_rs::async_trait]
-            impl ::nonebot_rs::prelude::Handler<#event_trait_name> for #ident {
-                fn match_(&mut self, _: &mut #event_trait_name) -> bool {
+            impl ::nonebot_rs::prelude::Handler<#event_param_ty> for #ident {
+                fn match_(&mut self, _: &mut #event_param_ty) -> bool {
                     true
                 }
-                async fn handle(&self, #event_param_pat: #event_param_ty,#matcher_param_pat: #matcher_param_ty) #block
+                async fn handle(&self, #event_param_pat: #event_param_ty,#matcher_param_pat: #matcher_param_ty) {
+                    if let Err(err) = self.raw(#event_param_pat,#matcher_param_pat).await {
+                        match err {
+                            ::nonebot_rs::NBError::Text(err_t) => {
+                                #matcher_param_pat.send_text(&err_t).await;
+                            }
+                            ::nonebot_rs::NBError::Other(err_m) => {
+                                #matcher_param_pat.send_(err_m).await;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
             }
+            impl #ident {
+                async fn raw(&self, #event_param_pat: #event_param_ty,#matcher_param_pat: #matcher_param_ty) -> ::nonebot_rs::NBResult<()> #block
+            }
+            
         }
     } else {
-        match event_param_ty.to_string().as_str() {
+        match quote! {#event_param_ty}.to_string().as_str() {
             "MessageEvent" => (),
             "GroupMessageEvent" => (),
             "PrivateMessageEvent" => (),
@@ -160,12 +92,69 @@ pub fn event(args: TokenStream, input: TokenStream) -> TokenStream {
         let args_vec = args_to_token(all);
 
         if pms.is_none() {
+            let mut ident_handle = quote! {};
+            let mut ident_raw = quote! {};
+            
+            match state_param {
+                None => {
+                    ident_handle.append_all(
+                        quote! {
+                            if let Err(err) = self.raw(#event_param_pat,#matcher_param_pat).await {
+                                match err {
+                                    ::nonebot_rs::NBError::Text(err_t) => {
+                                        #matcher_param_pat.send_text(&err_t).await;
+                                    }
+                                    ::nonebot_rs::NBError::Other(err_m) => {
+                                        #matcher_param_pat.send_(err_m).await;
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                    );
+                    ident_raw.append_all(
+                        quote! {
+                            impl #ident {
+                                async fn raw(&self, #event_param_pat: #event_param_ty,#matcher_param_pat: #matcher_param_ty) -> ::nonebot_rs::NBResult<()> #block
+                            }
+                        }
+                    );
+                }
+                Some((state_pat, state_ty)) => {
+                    ident_handle.append_all(
+                        quote! {
+                            unsafe {
+                                let mut state = ::nonebot_rs::STATE.lock().await;
+                                if let Err(err) = self.raw(&mut state,#event_param_pat,#matcher_param_pat).await {
+                                    match err {
+                                        ::nonebot_rs::NBError::Text(err_t) => {
+                                            #matcher_param_pat.send_text(&err_t).await;
+                                        }
+                                        ::nonebot_rs::NBError::Other(err_m) => {
+                                            #matcher_param_pat.send_(err_m).await;
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
+                            
+                        }
+                    );
+                    ident_raw.append_all(
+                        quote! {
+                            impl #ident {
+                                async fn raw(&self,#state_pat:#state_ty, #event_param_pat: #event_param_ty,#matcher_param_pat: #matcher_param_ty) -> ::nonebot_rs::NBResult<()> #block
+                            }
+                        }
+                    );
+                }
+            }
             quote! {
                 #[allow(non_camel_case_types)]
                 pub struct #ident {}
                 #[::nonebot_rs::async_trait]
-                impl ::nonebot_rs::prelude::Handler<#event_trait_name> for #ident {
-                    fn match_(&mut self, event: &mut #event_trait_name) -> bool {
+                impl ::nonebot_rs::prelude::Handler<#event_param_ty> for #ident {
+                    fn match_(&mut self, event: &mut #event_param_ty) -> bool {
                         if !::nonebot_rs::prelude::match_event_args_all(#args_vec, event.into()){
                             return false;
                         }
@@ -176,12 +165,10 @@ pub fn event(args: TokenStream, input: TokenStream) -> TokenStream {
                         true
                     }
                     async fn handle(&self, #event_param_pat: #event_param_ty,#matcher_param_pat: #matcher_param_ty) {
-                         self.raw(#event_param_pat,#matcher_param_pat).await;
+                        #ident_handle
                     }
                 }
-                impl #ident {
-                    async fn raw(&self, #event_param_pat: #event_param_ty,#matcher_param_pat: #matcher_param_ty) #block
-                }
+                #ident_raw
             }
         } else {
             let mut p_pats = quote! {};
@@ -267,7 +254,62 @@ pub fn event(args: TokenStream, input: TokenStream) -> TokenStream {
                     }
                 }
             }
-
+            let mut ident_handle = quote! {};
+            let mut ident_raw = quote! {};
+            match state_param {
+                None => {
+                    ident_handle.append_all(
+                        quote! {
+                            if let Err(err) = self.raw(#event_param_pat,#matcher_param_pat,#p_pats).await {
+                                match err {
+                                    ::nonebot_rs::NBError::Text(err_t) => {
+                                        #matcher_param_pat.send_text(&err_t).await;
+                                    }
+                                    ::nonebot_rs::NBError::Other(err_m) => {
+                                        #matcher_param_pat.send_(err_m).await;
+                                    }
+                                    _ => {}
+                                }
+                            }
+                        }
+                    );
+                    ident_raw.append_all(
+                        quote! {
+                            impl #ident {
+                                async fn raw(&self, #event_param_pat: #event_param_ty,#matcher_param_pat: #matcher_param_ty, #command_params_in_raw) -> ::nonebot_rs::NBResult<()> #block
+                            }
+                        }
+                    );
+                }
+                Some((state_pat, state_ty)) => {
+                    ident_handle.append_all(
+                        quote! {
+                            unsafe {
+                                let mut state = ::nonebot_rs::STATE.lock().await;
+                                if let Err(err) = self.raw(&mut state,#event_param_pat,#matcher_param_pat,#p_pats).await {
+                                    match err {
+                                        ::nonebot_rs::NBError::Text(err_t) => {
+                                            #matcher_param_pat.send_text(&err_t).await;
+                                        }
+                                        ::nonebot_rs::NBError::Other(err_m) => {
+                                            #matcher_param_pat.send_(err_m).await;
+                                        }
+                                        _ => {}
+                                    }
+                                }
+                            }
+                            
+                        }
+                    );
+                    ident_raw.append_all(
+                        quote! {
+                            impl #ident {
+                                async fn raw(&self,#state_pat:#state_ty ,#event_param_pat: #event_param_ty,#matcher_param_pat: #matcher_param_ty, #command_params_in_raw) -> ::nonebot_rs::NBResult<()> #block
+                            }
+                        }
+                    );
+                }
+            }
             quote! {
                 #[allow(non_camel_case_types)]
                 #[derive(Default)]
@@ -276,8 +318,8 @@ pub fn event(args: TokenStream, input: TokenStream) -> TokenStream {
                 }
 
                 #[::nonebot_rs::async_trait]
-                impl ::nonebot_rs::prelude::Handler<#event_trait_name> for #ident {
-                    fn match_(&mut self, event: &mut #event_trait_name) -> bool {
+                impl ::nonebot_rs::prelude::Handler<#event_param_ty> for #ident {
+                    fn match_(&mut self, event: &mut #event_param_ty) -> bool {
                         if !::nonebot_rs::prelude::match_event_args_all(#args_vec, event.into()){
                             return false;
                         }
@@ -289,13 +331,11 @@ pub fn event(args: TokenStream, input: TokenStream) -> TokenStream {
                         true
                     }
                     async fn handle(&self, #event_param_pat: #event_param_ty,#matcher_param_pat: #matcher_param_ty) {
-                        self.raw(#event_param_pat,#matcher_param_pat,#p_pats).await;
+                        #ident_handle
                     }
 
                 }
-                impl #ident {
-                    async fn raw(&self, #event_param_pat: #event_param_ty,#matcher_param_pat: #matcher_param_ty, #command_params_in_raw) #block
-                }
+                #ident_raw
             }
         }
     };
@@ -303,9 +343,11 @@ pub fn event(args: TokenStream, input: TokenStream) -> TokenStream {
     build.into()
 }
 
+
 #[proc_macro_error]
 #[proc_macro_attribute]
 pub fn scheduler(args: TokenStream, input: TokenStream) -> TokenStream {
+    
     // 获取#[event]的参数
     let attrs = parse_macro_input!(args as syn::AttributeArgs);
     // 获取方法
@@ -317,16 +359,12 @@ pub fn scheduler(args: TokenStream, input: TokenStream) -> TokenStream {
 
     // 判断事件
     let sig_params = &method.sig.inputs;
-    if sig_params.is_empty() {
-        abort!(&sig_params.span(), "需要bot作为参数");
-    }
-
     let bot_params = match sig_params.first() {
-        None => { abort!(&sig_params.span(), "需要bot作为参数"); }
+        None => abort!(&sig_params.span(), "需要Arc<proc_qq::Client>作为参数"),
         Some(bot) => {
             match bot {
-                FnArg::Receiver(_) => { abort!(&sig_params.span(), "第一个参数不能是self"); }
-                FnArg::Typed(t) => { t }
+                FnArg::Receiver(_) => abort!(&sig_params.span(), "第一个参数不能是self"),
+                FnArg::Typed(t) => t
             }
         }
     };
@@ -362,8 +400,7 @@ pub fn scheduler(args: TokenStream, input: TokenStream) -> TokenStream {
     let name = format!("{}", ident);
     let bot_params_pat = bot_params.pat.as_ref();
     let bot_params_ty = bot_params.ty.as_ref();
-    let bot_params_ty_ = quote! {#bot_params_ty};
-    match bot_params_ty_.to_string().as_str() {
+    match quote! {#bot_params_ty}.to_string().as_str() {
         "Arc < Bot >" => {}
         _ => { abort!(&bot_params.span(), "必须是Arc<Bot>") }
     }
@@ -391,5 +428,31 @@ pub fn scheduler(args: TokenStream, input: TokenStream) -> TokenStream {
             async fn raw(&self,#bot_params_pat: #bot_params_ty) #block
         }
     ).into()
+}
+
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn send(args: TokenStream, input: TokenStream) -> TokenStream {
+    // 获取#[event]的参数
+    let attrs = parse_macro_input!(args as syn::AttributeArgs);
+    // 获取方法
+    let method = parse_macro_input!(input as syn::ItemFn);
+    // 解析参数
+    let (all, bot_command) = parse_args_and_command(&method, attrs);
+    let command_items = parse_bot_command(&method, bot_command);
+    
+    // 判断是否为async方法
+    if method.sig.asyncness.is_none() {
+        abort!(&method.sig.span(), "必须是async方法");
+    }
+    
+    // 判断事件
+    let sig_params = &method.sig.inputs;
+    if sig_params.is_empty() {
+        abort!(&sig_params.span(), "需要事件作为参数");
+    }
+    
+    
+    quote!().into()
 }
 

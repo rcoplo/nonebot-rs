@@ -1,5 +1,6 @@
+use std::process::id;
 use crate::config::BotConfig;
-use crate::event::{Event, MessageEvent};
+use crate::event::{Event, GroupId, MessageEvent};
 use crate::event::{SelfId, UserId};
 use crate::matcher::Rule;
 use std::sync::Arc;
@@ -52,12 +53,14 @@ pub fn is_user<E>(user_id: i64) -> Rule<E>
 }
 
 /// 判定 event 是否来自指定 group
-pub fn in_group(group_id: i64) -> Rule<MessageEvent> {
-    let in_group = move |event: &MessageEvent, _: &BotConfig| -> bool {
-        if let MessageEvent::Group(g) = event {
-            if g.group_id == group_id {
-                return true;
-            }
+pub fn in_group<E>(group_id: i64) -> Rule<E>
+    where
+        E: GroupId,
+{
+    let in_group = move |event: &E, _: &BotConfig| -> bool {
+        let id = event.get_group_id();
+        if id == group_id {
+            return true;
         }
         false
     };

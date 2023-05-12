@@ -347,7 +347,7 @@ pub struct BotClient {
     pub device_name: String,
 }
 /// 通知类型
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum NoticeType {
     /// 群文件上传
     #[serde(rename = "group_upload")]
@@ -392,7 +392,7 @@ pub enum NoticeType {
 }
 
 /// 通知子类型
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub enum NoticeSubType {
     /// 群荣誉变更
     #[serde(rename = "honor")]
@@ -511,6 +511,14 @@ pub enum RequestSubType {
     Invite,
 }
 
+impl std::fmt::Display for RequestSubType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RequestSubType::Add => write!(f, "add"),
+            RequestSubType::Invite => write!(f, "invite"),
+        }
+    }
+}
 /// 元事件
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MetaEvent {
@@ -569,6 +577,61 @@ impl UserId for Event {
             }
             Event::Request(r) => r.user_id,
             _ => 0,
+        }
+    }
+}
+
+pub trait GroupId {
+    fn get_group_id(&self) -> i64;
+}
+
+impl GroupId for MessageEvent {
+    fn get_group_id(&self) -> i64 {
+        match self {
+            MessageEvent::Group(g) => g.group_id,
+            _ => 0,
+        }
+    }
+}
+
+impl GroupId for Event {
+    fn get_group_id(&self) -> i64 {
+        match self {
+            Event::Message(m) => match m {
+                MessageEvent::Group(g) => g.user_id,
+                _ => 0,
+            }
+            Event::Notice(n) => {
+                if let Some(g) = n.group_id {
+                    return g;
+                }
+                0
+            }
+            Event::Request(r) => {
+                if let Some(g) = r.group_id {
+                    return g;
+                }
+                0
+            },
+            _ => 0,
+        }
+    }
+}
+
+impl GroupId for NoticeEvent {
+    fn get_group_id(&self) -> i64 {
+        match self.group_id {
+            None => 0,
+            Some(group_id) => group_id,
+        }
+    }
+}
+
+impl GroupId for RequestEvent {
+    fn get_group_id(&self) -> i64 {
+        match self.group_id {
+            None => 0,
+            Some(group_id) => group_id,
         }
     }
 }

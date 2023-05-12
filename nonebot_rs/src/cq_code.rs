@@ -1,4 +1,5 @@
 use std::fmt::{Display, Formatter};
+use futures_util::TryFutureExt;
 use crate::message::MessageChain;
 
 #[derive(Clone)]
@@ -96,14 +97,20 @@ impl Display for Video {
 #[derive(Default, Clone)]
 pub struct At {
     pub qq: String,
-    pub name: Option<String>,
+    pub name: String,
 }
 
 impl Display for At {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "[CQ:at,qq={}{}]",
                self.qq,
-               self.name.as_ref().map(|name| format!(",name={name}")).unwrap_or_else(|| "".to_owned()),
+               {
+                   if !self.name.is_empty() {
+                       format!(",name={}", self.name)
+                   } else {
+                       "".to_owned()
+                   }
+               },
         )
     }
 }

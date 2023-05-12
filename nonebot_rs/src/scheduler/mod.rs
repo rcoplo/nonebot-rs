@@ -2,6 +2,7 @@ use crate::log::colored::*;
 use std::collections::HashMap;
 use std::sync::Arc;
 
+
 /// 定时任务 trait
 
 pub trait ScheduledJob {
@@ -16,7 +17,7 @@ pub trait ScheduledJob {
 pub struct Scheduler {
     inner: tokio_cron_scheduler::JobScheduler,
     bots: HashMap<i64, Vec<uuid::Uuid>>,
-    jobs: Vec<Arc<Box<dyn ScheduledJob + Sync + Send + 'static>>>,
+    tasks: Vec<Arc<Box<dyn ScheduledJob + Sync + Send + 'static>>>,
     config: SchedulerConfig,
 }
 
@@ -50,45 +51,51 @@ impl Scheduler {
         Self {
             inner: tokio_cron_scheduler::JobScheduler::new().await.expect("JobScheduler start failed"),
             bots: HashMap::new(),
-            jobs: vec![],
+            tasks: vec![],
             config: SchedulerConfig { disable: false, jobs: HashMap::new() },
         }
     }
-
+    
     /// 向定时任务执行器中添加一个定时任务
-    pub async fn add_task(&mut self, job: Box<impl ScheduledJob + Sync + Send + 'static>) {
-        self.jobs.push(Arc::new(job));
+    pub async fn add_task<T>(&mut self, task: T)
+        where
+            T: ScheduledJob + Sync + Send + 'static
+    {
+        self.tasks.push(Arc::new(Box::new(task)));
     }
-
-    pub async fn add_tasks(&mut self, jobs: Vec<Box<dyn ScheduledJob + Sync + Send + 'static>>) {
-        for job in jobs {
-            self.jobs.push(Arc::new(job));
+    
+    pub async fn add_tasks<T>(&mut self, tasks: Vec<T>)
+        where
+            T: ScheduledJob + Sync + Send + 'static
+    {
+        for task in tasks {
+            self.tasks.push(Arc::new(Box::new(task)));
         }
     }
-
+    
     async fn run(mut self, mut event_receiver: crate::EventReceiver) {
         while let Ok(event) = event_receiver.recv().await {
             match event {
                 crate::event::Event::Nonebot(bot) => {
                     match bot {
                         crate::event::NbEvent::BotConnect { bot } => {
-                            let arc = Arc::new(bot);
+                            let bot = Arc::new(bot);
                             let mut vec = vec![];
-                            for job in &self.jobs {
-                                let bot = Arc::clone(&arc);
-                                let _job = job.clone();
+                            for task in &self.tasks {
+                                let bot = Arc::clone(&bot);
+                                let _teak = Arc::clone(task);
                                 crate::log::event!(
                                    crate::log::Level::INFO,
                                    "Scheduler {} is Loaded",
-                                   _job.name().blue()
+                                   _teak.name().blue()
                                );
-                                let job = tokio_cron_scheduler::Job::new_async(_job.cron().as_str(), move |_, _| {
-                                    _job.call(bot.clone())
+                                let job = tokio_cron_scheduler::Job::new_async(_teak.cron().as_str(), move |_, _| {
+                                    _teak.call(bot.clone())
                                 }).unwrap();
                                 vec.push(job.guid());
                                 self.inner.add(job).await.expect("Scheduler add failed");
                             }
-                            self.bots.insert(arc.bot_id, vec);
+                            self.bots.insert(bot.bot_id, vec);
                         }
                         crate::event::NbEvent::BotDisconnect { bot } => {
                             if let Some(uuid) = self.bots.get(&bot.bot_id) {
@@ -135,9 +142,9 @@ impl<T: ArcScheduledJob> ScheduledJob for Arc<T> {
 #[async_trait::async_trait]
 impl crate::Plugin for Scheduler {
     fn run(&self, event_receiver: crate::EventReceiver, _: crate::BotGetter) {
-        let job = self.clone();
-        if !job.config.disable {
-            tokio::spawn(job.run(event_receiver));
+        let scheduler = self.clone();
+        if !scheduler.config.disable {
+            tokio::spawn(scheduler.run(event_receiver));
         }
     }
 

@@ -7,6 +7,12 @@ pub enum MatchersAction {
     AddMessageEventMatcher {
         message_event_matcher: super::Matcher<crate::event::MessageEvent>,
     },
+    AddNoticeEventMatcher {
+        notice_event_matcher: super::Matcher<crate::event::NoticeEvent>,
+    },
+    AddRequestEventMatcher {
+        request_event_matcher: super::Matcher<crate::event::RequestEvent>,
+    },
     /// 移除 Matcher
     RemoveMatcher { matcher_name: String },
 }
@@ -24,6 +30,22 @@ impl super::matchers::Matchers {
                     message_event_matcher.name.blue()
                 );
                 self.add_message_matcher(message_event_matcher);
+            }
+            MatchersAction::AddNoticeEventMatcher { notice_event_matcher } => {
+                event!(
+                    Level::DEBUG,
+                    "Adding Notice Event Matcher: {}",
+                    notice_event_matcher.name.blue()
+                );
+                self.add_notice_matcher(notice_event_matcher);
+            }
+            MatchersAction::AddRequestEventMatcher { request_event_matcher } => {
+                event!(
+                    Level::DEBUG,
+                    "Adding Request Event Matcher: {}",
+                    request_event_matcher.name.blue()
+                );
+                self.add_request_matcher(request_event_matcher);
             }
             MatchersAction::RemoveMatcher { matcher_name } => {
                 event!(

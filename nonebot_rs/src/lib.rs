@@ -195,7 +195,11 @@ mod plugin;
 mod scheduler;
 mod utils;
 mod cq_code;
+mod error;
 
+pub use error::{
+    NBResult, NBError,
+};
 pub use async_trait::async_trait;
 
 pub mod prelude {
@@ -203,15 +207,15 @@ pub mod prelude {
     #[cfg(feature = "scheduler")]
     #[cfg_attr(docsrs, doc(cfg(feature = "scheduler")))]
     pub use crate::scheduler::*;
-
+    
     pub use nonebot_rs_macros::{
         event, scheduler,
     };
-
+    
     #[cfg(feature = "matcher")]
     #[cfg_attr(docsrs, doc(cfg(feature = "matcher")))]
     pub use crate::matcher::*;
-
+    pub use colored;
     pub use log::{
         event as log_event, Level,
     };
@@ -223,8 +227,12 @@ pub mod prelude {
         message::*,
         nb::*,
         config::*,
-        utils::timestamp,
         bot::Bot,
+        matcher_build,
+        config::BotConfig,
+        utils::{
+            remove_space, timestamp,
+        },
     };
     use crate::log;
 }
@@ -244,7 +252,19 @@ use message::Message;
 #[doc(inline)]
 use plugin::Plugin;
 
-
+#[macro_export]
+macro_rules! matcher_build {
+    ($e:ident,$b:block) => {
+        pub fn matcher() -> ::nonebot_rs::prelude::Matcher<$e>{
+            $b
+        }
+    };
+    (vec,$e:ident,$b:block) => {
+        pub fn matcher() -> Vec<::nonebot_rs::prelude::Matcher<$e>>{
+            $b
+        }
+    };
+}
 /// Onebot Api mpsc channel Bot 发送 WebSocket 接收
 pub type ApiSender = mpsc::Sender<ApiChannelItem>;
 /// Bot 监视 Onebot ApiResp Watch channel
@@ -292,8 +312,14 @@ pub enum ApiChannelItem {
     Api(api::Api),
     /// Event 用于临时 Matcher 与原 Matcher 传递事件 todo
     MessageEvent(event::MessageEvent),
-    Request(event::RequestEvent),
-    Notice(event::NoticeEvent),
+    RequestEvent(event::RequestEvent),
+    NoticeEvent(event::NoticeEvent),
     /// Time out 通知T
     TimeOut,
 }
+
+pub type State = anymap::Map<dyn core::any::Any + Send>;
+
+pub static mut STATE: once_cell::sync::Lazy<tokio::sync::Mutex<State>> = once_cell::sync::Lazy::new(|| tokio::sync::Mutex::new(State::new()));
+
+

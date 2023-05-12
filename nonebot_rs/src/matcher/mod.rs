@@ -1,11 +1,10 @@
 use crate::config::BotConfig;
-use crate::event::{GroupMessageEvent, MessageEvent, PrivateMessageEvent, SelfId};
+use crate::event::{GroupMessageEvent, MessageEvent, NoticeEvent, PrivateMessageEvent, SelfId};
 use crate::utils::timestamp;
 use crate::{Action, Message};
 use async_trait::async_trait;
 use std::collections::HashMap;
 use std::sync::Arc;
-use serde_json::Map;
 use tokio::sync::RwLock;
 use tracing::warn;
 use crate::cq_code::*;
@@ -28,23 +27,10 @@ pub mod rules;
 #[cfg(feature = "matcher")]
 #[cfg_attr(docsrs, doc(cfg(feature = "matcher")))]
 pub mod pre_matchers;
-
-#[macro_export]
-macro_rules! matcher {
-    ($e:ident,$b:block) => {
-        pub fn matcher() -> ::nonebot_rs::prelude::Matcher<$e>{
-            $b
-        }
-    };
-}
-#[macro_export]
-macro_rules! matcher_vec {
-    ($e:ident,$b:block) => {
-        pub fn matcher() -> Vec<::nonebot_rs::prelude::Matcher<$e>>{
-            $b
-        }
-    };
-}
+#[doc(hidden)]
+pub mod request_event_matcher;
+#[doc(hidden)]
+pub mod notice_event_matcher;
 
 /// rule 函数类型
 pub type Rule<E> = Arc<dyn Fn(&E, &BotConfig) -> bool + Send + Sync>;
@@ -81,12 +67,14 @@ where
     pub temp: bool,
     /// 过期时间戳
     pub timeout: Option<i64>,
-
+    
     #[doc(hidden)]
-    pub event: Option<E>,
-
-    pub state: Map<String, serde_json::Value>
+    event: Option<E>,
+    
 }
+
+
+
 
 #[doc(hidden)]
 impl<E> std::fmt::Debug for Matcher<E>
@@ -121,7 +109,7 @@ where
     /// 匹配函数
     fn match_(&mut self, event: &mut E) -> bool;
     /// 处理函数
-    async fn handle(&self, event: E, matcher: Matcher<E>);
+    async fn handle(&self, event: E, matcher: &mut Matcher<E>);
     /// Load config
     #[allow(unused_variables)]
     fn load_config(&mut self, config: HashMap<String, toml::Value>) {}
@@ -153,6 +141,7 @@ where
     where
         H: Handler<E> + Sync + Send + 'static,
     {
+
         // 默认 Matcher
         Matcher {
             name: name.to_string(),
@@ -167,7 +156,6 @@ where
             temp: false,
             timeout: None,
             event: None,
-            state: Map::new(),
         }
     }
 
@@ -228,17 +216,17 @@ where
         if !self.check_rules(&event, &config) {
             return false;
         }
-
+        
         {
             let mut handler = self.handler.write().await;
             if !handler.match_(&mut event) {
                 return false;
             }
-            let matcher = self.clone().set_event(&event);
+            let mut matcher = self.clone().set_event(&event);
             let handler = self.handler.clone();
             tokio::spawn(async move {
                 let handler = handler.read().await;
-                handler.handle(event, matcher).await
+                handler.handle(event, &mut matcher).await
             });
         }
         return true;
@@ -250,11 +238,22 @@ where
             bot.action_sender.send(set).await.unwrap();
         }
     }
-
-    /// 向 Matchers 添加 Matcher<MessageEvent>
+    
+    /// 向 Matchers 添加 `Matcher<MessageEvent>`
     pub async fn set_message_matcher(&self, matcher: Matcher<MessageEvent>) {
         let action = action::MatchersAction::AddMessageEventMatcher {
             message_event_matcher: matcher,
+        };
+        if let Some(action_sender) = &self.action_sender {
+            action_sender.send(action).unwrap();
+        } else {
+            tracing::event!(tracing::Level::WARN, "Action Sender not init.")
+        }
+    }
+    /// 向 Matchers 添加 `Matcher<NoticeEvent>`
+    pub async fn set_notice_matcher(&self, matcher: Matcher<NoticeEvent>) {
+        let action = action::MatchersAction::AddNoticeEventMatcher {
+            notice_event_matcher: matcher,
         };
         if let Some(action_sender) = &self.action_sender {
             action_sender.send(action).unwrap();
@@ -266,7 +265,8 @@ where
 
 /// 构建临时 Matcher<MessageEvent>
 pub fn build_temp_message_event_matcher<H>(
-    time: i32,
+    user_id: Option<i64>,
+    time: i64,
     event: &MessageEvent,
     handler: H,
 ) -> Matcher<MessageEvent>
@@ -283,17 +283,54 @@ where
         ),
         handler,
     )
-        .add_rule(rules::is_user(event.get_user_id()))
         .add_rule(rules::is_bot(event.get_self_id()));
+    if let Some(user_id) = user_id {
+        m.add_rule(rules::is_user(user_id));
+    } else {
+        m.add_rule(rules::is_user(event.get_user_id()));
+    }
     if let MessageEvent::Group(g) = event {
         m.add_rule(rules::in_group(g.group_id));
     } else {
         m.add_rule(rules::is_private_message_event());
     }
-
+    
     m.set_priority(0)
-        .set_temp(true)
-        .set_timeout(timestamp() + time as i64)
+     .set_temp(true)
+     .set_timeout(timestamp() + time)
+}
+
+pub fn build_temp_notice_event_matcher<H>(
+    user_id: Option<i64>,
+    time: i64,
+    event: &NoticeEvent,
+    handler: H,
+) -> Matcher<NoticeEvent>
+    where
+        H: Handler<NoticeEvent> + Send + Sync + 'static,
+{
+    use crate::event::UserId;
+    let mut m = Matcher::new(
+        &format!(
+            "{}-{}",
+            event.get_self_id(),
+            event.get_user_id(),
+        ),
+        handler,
+    )
+        .add_rule(rules::is_bot(event.get_self_id()));
+    if let Some(user_id) = user_id {
+        m.add_rule(rules::is_user(user_id));
+    } else {
+        m.add_rule(rules::is_user(event.get_user_id()));
+    }
+    if let Some(group_id) = event.group_id {
+        m.add_rule(rules::in_group(group_id));
+    }
+    
+    m.set_priority(0)
+     .set_temp(true)
+     .set_timeout(timestamp() + time)
 }
 
 #[derive(Clone, Debug)]
@@ -424,7 +461,7 @@ impl CommandMatcher {
         if self.matching.is_empty() {
             None
         } else {
-            warn!("{:?}", elements);
+            
             // matching 恒不为空，至少有1节
             let mut saw = self.matching.split_ascii_whitespace();
             let first = saw.next().unwrap();
@@ -467,7 +504,7 @@ impl CommandMatcher {
             }
             let result = params_match.iter().map(|s| s.to_string()).collect();
             self.matching = self.matching[first.len()..].trim().to_string();
-            warn!("{:?}", result);
+            
             Some(result)
         }
     }
@@ -915,7 +952,7 @@ fn message_to_cq(m: Message) -> CqCode {
             })
         }
         Message::At { qq, name } => {
-            CqCode::At(At { qq, name })
+            CqCode::At(At { qq, name: name.unwrap_or_default() })
         }
         Message::Rps => {
             CqCode::Rps
@@ -966,4 +1003,12 @@ fn message_to_cq(m: Message) -> CqCode {
             CqCode::JsonMsg(JsonMsg { data })
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum Session {
+    Error,
+    Stop,
+    Timeout,
+    On,
 }

@@ -97,6 +97,9 @@ pub struct StrangerInfo {
     pub nickname: String,
     pub sex: crate::event::Sex,
     pub age: i32,
+    pub qid: String,
+    pub level: i32,
+    pub login_days: i32,
 }
 
 /// get_group_info 响应数据

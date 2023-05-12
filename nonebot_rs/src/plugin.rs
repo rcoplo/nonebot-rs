@@ -1,15 +1,6 @@
 // pub fn register_plugin(nb: crate::Nonebot) {}
 use async_trait::async_trait;
 
-/// Prelude for Plugin
-pub mod prelude {
-    pub use super::Plugin;
-    pub use crate::event::{Event, MessageEvent, NbEvent};
-    pub use crate::event::{SelfId, UserId};
-    pub use crate::message::Message;
-    pub use async_trait::async_trait;
-    pub use toml;
-}
 
 /// A trait for nbrs plugins
 #[async_trait]

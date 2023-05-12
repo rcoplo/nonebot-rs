@@ -2,7 +2,8 @@ use crate::event::{Event, MessageEvent, MetaEvent, NoticeEvent, RequestEvent, Se
 use crate::matcher::Matcher;
 use async_trait::async_trait;
 use colored::*;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::HashMap;
+use std::collections::btree_map::BTreeMap;
 use tokio::sync::broadcast;
 use tracing::{event, Level};
 
@@ -140,7 +141,7 @@ impl Matchers {
 impl crate::Plugin for Matchers {
     fn run(&self, event_receiver: crate::EventReceiver, bot_getter: crate::BotGetter) {
         let mut m = self.clone();
-        m.bot_getter = Some(bot_getter.clone());
+        m.bot_getter = Some(bot_getter);
         tokio::spawn(m.event_recv(event_receiver));
     }
 
@@ -157,7 +158,7 @@ impl crate::Plugin for Matchers {
     }
 }
 
-fn log_load_matchers(matchers: &crate::prelude::matchers::Matchers) {
+fn log_load_matchers(matchers: &Matchers) {
     log_matcherb(&matchers.message);
     log_matcherb(&matchers.notice);
     log_matcherb(&matchers.request);

@@ -1,6 +1,8 @@
 use super::{Matchers, MatchersBTreeMap, MatchersHashMap};
 use crate::event::{MessageEvent, MetaEvent, NoticeEvent, RequestEvent};
-use crate::matcher::{action::MatchersAction, Matcher};
+use crate::matcher::{action, Matcher};
+
+
 use std::collections::{BTreeMap, HashMap};
 use tokio::sync::broadcast;
 
@@ -93,7 +95,7 @@ impl Matchers {
     fn add_matcher<E>(
         matcherb: &mut MatchersBTreeMap<E>,
         mut matcher: Matcher<E>,
-        action_sender: broadcast::Sender<MatchersAction>,
+        action_sender: broadcast::Sender<action::MatchersAction>,
     ) where
         E: Clone,
     {

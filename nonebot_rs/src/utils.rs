@@ -1,12 +1,7 @@
 /// 去除字符串前方多余空格
 #[allow(dead_code)]
 pub fn remove_space(s: &str) -> String {
-    let mut rstring = String::from(s);
-    let mut chars = s.chars();
-    while chars.next() == Some(' ') {
-        rstring.remove(0);
-    }
-    rstring
+    s.trim_start_matches(' ').trim_end_matches(' ').to_string()
 }
 
 use chrono::Local;

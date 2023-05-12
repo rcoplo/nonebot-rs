@@ -1,5 +1,6 @@
+
 use crate::api_resp;
-use crate::event::{Event, MessageEvent, NoticeType, RequestType};
+use crate::event::{Event, MessageEvent, NoticeEvent, NoticeSubType, NoticeType, RequestEvent, RequestType};
 use crate::{api, config, utils, ApiChannelItem, ApiResp};
 use colored::*;
 use tokio::sync::{mpsc, watch};
@@ -22,6 +23,7 @@ pub struct Bot {
     pub action_sender: crate::ActionSender,
     /// ApiResp Receiver
     pub api_resp_watcher: watch::Receiver<ApiResp>,
+    
 }
 
 impl Bot {
@@ -100,77 +102,124 @@ impl Bot {
             MessageEvent::Group(g) => self.send_group_msg_nrv(g.group_id, msg).await,
         }
     }
-
-    pub async fn send_by_event(&self, event: &Event, msg: crate::message::MessageChain) {
-        match event {
-            Event::Message(m) => match m {
-                MessageEvent::Private(p) => self.send_private_msg_nrv(p.user_id, msg).await,
-                MessageEvent::Group(g) => self.send_group_msg_nrv(g.group_id, msg).await,
+    
+    pub async fn send_by_request_event_(&self, event: &RequestEvent, msg: crate::message::MessageChain) -> Option<crate::api_resp::MessageId> {
+        match &event.request_type {
+            RequestType::Friend => {
+                self.send_private_msg(event.user_id, msg, false).await
             }
-
-            Event::Notice(n) => {
-                match n.notice_type {
-                    NoticeType::GroupUpload => {
-                        self.send_group_msg_nrv(n.group_id.unwrap(), msg).await;
-                    }
-                    NoticeType::GroupAdmin => {
-                        self.send_group_msg_nrv(n.group_id.unwrap(), msg).await;
-                    }
-                    NoticeType::GroupDecrease => {
-                        self.send_group_msg_nrv(n.group_id.unwrap(), msg).await;
-                    }
-                    NoticeType::GroupIncrease => {
-                        self.send_group_msg_nrv(n.group_id.unwrap(), msg).await;
-                    }
-                    NoticeType::GroupBan => {
-                        self.send_group_msg_nrv(n.group_id.unwrap(), msg).await;
-                    }
-                    NoticeType::FriendAdd => {
-                        self.send_private_msg_nrv(n.user_id, msg).await;
-                    }
-                    NoticeType::GroupRecall => {
-                        self.send_group_msg_nrv(n.group_id.unwrap(), msg).await;
-                    }
-                    NoticeType::FriendRecall => {
-                        self.send_private_msg_nrv(n.group_id.unwrap(), msg).await;
-                    }
-                    NoticeType::GroupCard => {
-                        self.send_group_msg_nrv(n.group_id.unwrap(), msg).await;
-                    }
-                    NoticeType::OfflineFile => {
-                        self.send_private_msg_nrv(n.group_id.unwrap(), msg).await;
-                    }
-                    NoticeType::Essence => {
-                        self.send_group_msg_nrv(n.group_id.unwrap(), msg).await;
-                    }
-                    NoticeType::Notify => {
-                        if let Some(group_id) = n.group_id {
-                            self.send_group_msg_nrv(group_id, msg).await;
-                        } else {
-                            self.send_private_msg_nrv(n.user_id, msg).await;
-                        }
-                    }
-                    _ => {}
-                }
+            RequestType::Group => {
+                self.send_group_msg(event.group_id.unwrap(), msg, false).await
             }
-
-            Event::Request(r) => {
-                // 使用场景很少
-                match r.request_type {
-                    RequestType::Friend => {
-                        self.send_private_msg_nrv(r.user_id, msg).await;
-                    }
-                    RequestType::Group => {
-                        if let Some(group_id) = r.group_id {
-                            self.send_group_msg_nrv(group_id, msg).await;
-                        }
-                    }
-                }
-            }
-            _ => {}
         }
     }
-
+    
+    pub async fn send_by_request_event(&self, event: &RequestEvent, msg: crate::message::MessageChain) {
+        match &event.request_type {
+            RequestType::Friend => {
+                self.send_private_msg_nrv(event.user_id, msg).await;
+            }
+            RequestType::Group => {
+                self.send_group_msg_nrv(event.group_id.unwrap(), msg).await;
+            }
+        }
+    }
+    
+    pub async fn send_by_notice_event_(&self, event: &NoticeEvent, msg: crate::message::MessageChain) -> Option<crate::api_resp::MessageId> {
+        match &event.notice_type {
+            NoticeType::GroupUpload => {
+                self.send_group_msg(event.group_id.unwrap(), msg, false).await
+            }
+            NoticeType::GroupAdmin => {
+                self.send_group_msg(event.group_id.unwrap(), msg, false).await
+            }
+            NoticeType::GroupDecrease => {
+                self.send_group_msg(event.group_id.unwrap(), msg, false).await
+            }
+            NoticeType::GroupIncrease => {
+                self.send_group_msg(event.group_id.unwrap(), msg, false).await
+            }
+            NoticeType::GroupBan => {
+                self.send_group_msg(event.group_id.unwrap(), msg, false).await
+            }
+            NoticeType::FriendAdd => {
+                self.send_private_msg(event.user_id, msg, false).await
+            }
+            NoticeType::GroupRecall => {
+                self.send_group_msg(event.group_id.unwrap(), msg, false).await
+            }
+            NoticeType::FriendRecall => {
+                self.send_private_msg(event.user_id, msg, false).await
+            }
+            NoticeType::GroupCard => {
+                self.send_group_msg(event.group_id.unwrap(), msg, false).await
+            }
+            NoticeType::OfflineFile => {
+                self.send_private_msg(event.user_id, msg, false).await
+            }
+            NoticeType::Essence => {
+                self.send_group_msg(event.group_id.unwrap(), msg, false).await
+            }
+            NoticeType::Notify => {
+                match event.group_id {
+                    None => {
+                        self.send_private_msg(event.user_id, msg, false).await
+                    }
+                    Some(group_id) => {
+                        self.send_group_msg(group_id, msg, false).await
+                    }
+                }
+            }
+            _ => None,
+        }
+    }
+    
+    pub async fn send_by_notice_event(&self, event: &NoticeEvent, msg: crate::message::MessageChain) {
+        match &event.notice_type {
+            NoticeType::GroupUpload => {
+                self.send_group_msg_nrv(event.group_id.unwrap(), msg).await;
+            }
+            NoticeType::GroupAdmin => {
+                self.send_group_msg_nrv(event.group_id.unwrap(), msg).await;
+            }
+            NoticeType::GroupDecrease => {
+                self.send_group_msg_nrv(event.group_id.unwrap(), msg).await;
+            }
+            NoticeType::GroupIncrease => {
+                self.send_group_msg_nrv(event.group_id.unwrap(), msg).await;
+            }
+            NoticeType::GroupBan => {
+                self.send_group_msg_nrv(event.group_id.unwrap(), msg).await;
+            }
+            NoticeType::FriendAdd => {
+                self.send_private_msg_nrv(event.user_id, msg).await;
+            }
+            NoticeType::GroupRecall => {
+                self.send_group_msg_nrv(event.group_id.unwrap(), msg).await;
+            }
+            NoticeType::FriendRecall => {
+                self.send_private_msg_nrv(event.group_id.unwrap(), msg).await;
+            }
+            NoticeType::GroupCard => {
+                self.send_group_msg_nrv(event.group_id.unwrap(), msg).await;
+            }
+            NoticeType::OfflineFile => {
+                self.send_private_msg_nrv(event.group_id.unwrap(), msg).await;
+            }
+            NoticeType::Essence => {
+                self.send_group_msg_nrv(event.group_id.unwrap(), msg).await;
+            }
+            NoticeType::Notify => {
+                if let Some(group_id) = event.group_id {
+                    self.send_group_msg_nrv(group_id, msg).await;
+                } else {
+                    self.send_private_msg_nrv(event.user_id, msg).await;
+                }
+            }
+            _ => {},
+        }
+    }
+    
     /// 请求 Onebot Api，不等待 Onebot 返回
     pub async fn call_api(&self, api: api::Api) {
         self.api_sender

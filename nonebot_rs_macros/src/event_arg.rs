@@ -10,7 +10,7 @@ use syn::{AttributeArgs, ItemFn, NestedMeta};
 pub(crate) enum EventArg {
     All(Vec<EventArg>),
     Not(Vec<EventArg>),
-    Regexp(String),
+    Reg(String),
     BotCommand(String),
 }
 
@@ -52,19 +52,19 @@ pub(crate) fn parse_args(children: Vec<NestedMeta>) -> Vec<EventArg> {
                     let ident = &nv.path.segments.first().unwrap().ident;
                     let ident_name = nv.path.segments.first().unwrap().ident.to_string();
                     match ident_name.as_str() {
-                        "regexp" => match nv.lit {
+                        "reg" => match nv.lit {
                             Str(value) => {
                                 let v = value.value();
                                 match regex::Regex::new(v.as_str()) {
                                     Ok(_) => {
-                                        children_args.push(EventArg::Regexp(v));
+                                        children_args.push(EventArg::Reg(v));
                                     }
                                     Err(_) => {
                                         abort!(&ident.span(), "正则表达式不正确");
                                     }
                                 }
                             }
-                            _ => abort!(&ident.span(), "regexp只支持字符串类型参数值"),
+                            _ => abort!(&ident.span(), "reg只支持字符串类型参数值"),
                         },
                         "bot_command" => match nv.lit {
                             Str(value) => {
@@ -98,7 +98,7 @@ pub(crate) fn contains_bot_command(all: &Vec<EventArg>) -> bool {
                     return true;
                 }
             }
-            EventArg::Regexp(_) => {}
+            EventArg::Reg(_) => {}
         }
     }
     false
@@ -142,18 +142,18 @@ pub(crate) fn arg_to_token(arg: EventArg) -> proc_macro2::TokenStream {
         EventArg::All(v) => {
             let ts = args_to_token(v);
             quote! {
-                ::nonebot_rs::matcher::EventArg::All(#ts)
+                ::nonebot_rs::prelude::EventArg::All(#ts)
             }
         }
         EventArg::Not(v) => {
             let ts = args_to_token(v);
             quote! {
-                ::nonebot_rs::matcher::EventArg::Not(#ts)
+                ::nonebot_rs::prelude::EventArg::Not(#ts)
             }
         }
-        EventArg::Regexp(string) => {
+        EventArg::Reg(string) => {
             quote! {
-                ::nonebot_rs::matcher::EventArg::Regexp(#string .to_string())
+                ::nonebot_rs::prelude::EventArg::Regexp(#string .to_string())
             }
         }
         EventArg::BotCommand(_) => {

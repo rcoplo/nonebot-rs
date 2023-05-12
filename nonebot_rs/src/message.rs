@@ -322,7 +322,7 @@ pub trait MessageChainTrait {
     fn new() -> MessageChain;
     fn append(&mut self, message: Message) -> &mut MessageChain;
     fn text<T: AsRef<str>>(&mut self, text: T) -> &mut MessageChain;
-    fn at(&mut self, qq: i64) -> &mut MessageChain;
+    fn at(&mut self, qq: &str) -> &mut MessageChain;
     fn image(&mut self, url: &str) -> &mut MessageChain;
     fn image_custom(&mut self, file: &str, ty: Option<&str>, url: Option<&str>, cache: Option<u8>, proxy: Option<u8>, timeout: Option<i64>) -> &mut MessageChain;
     fn poke(&mut self, qq: i64) -> &mut MessageChain;
@@ -357,8 +357,8 @@ impl MessageChainTrait for MessageChain {
         self.push(Message::text(text));
         self
     }
-
-    fn at(&mut self, qq: i64) -> &mut MessageChain {
+    
+    fn at(&mut self, qq: &str) -> &mut MessageChain {
         self.push(Message::at(qq.to_string()));
         self
     }

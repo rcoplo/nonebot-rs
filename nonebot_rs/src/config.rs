@@ -60,7 +60,7 @@ pub struct GlobalConfig {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct BotConfig {
     /// bot id
-    #[serde(skip)]
+    #[serde(default)]
     pub bot_id: i64,
     /// 管理员账号设置
     #[serde(default)]
